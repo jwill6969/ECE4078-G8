@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+ 
 import cv2
 import numpy as np
 import os
@@ -19,7 +21,8 @@ objp[0,:,:2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
 prev_img_shape = None
  
 # Extracting path of individual image stored in a given directory
-images = glob.glob('./calpics/*.png')
+image_path = ("Images/*.png")
+images = glob.glob(image_path)
 for fname in images:
     img = cv2.imread(fname)
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
