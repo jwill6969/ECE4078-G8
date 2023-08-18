@@ -68,3 +68,9 @@ print("rvecs : \n")
 print(rvecs)
 print("tvecs : \n")
 print(tvecs)
+
+filename1 = "distCoeffs.txt"
+filename2 = "intrinsic.txt"
+
+np.savetxt(filename1, dist, fmt ='%.8f', delimiter=',')
+np.savetxt(filename2, mtx, fmt ='%.8f', delimiter=',')
