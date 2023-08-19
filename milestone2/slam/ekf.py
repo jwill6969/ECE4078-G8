@@ -90,11 +90,11 @@ class EKF:
         F = self.state_transition(raw_drive_meas)
         
         x = self.get_state_vector()
-        
+        self.robot.drive(raw_drive_meas)
         # TODO: add your codes here to compute the predicted x
         Q = self.predict_covariance(raw_drive_meas)
-
-        self.P = F @ self.P @ F.T + Q
+        
+        self.P = np.dot(np.dot(F, self.P), np.transpose(F))+Q
 
     # the update step of EKF
     def update(self, measurements):
@@ -119,13 +119,12 @@ class EKF:
         x = self.get_state_vector()
 
         # TODO: add your codes here to compute the updated x
-        K = self.P @ H.T @ np.linalg.inv(H @ self.P @ H.T + R)
-
-        x_bar = np.array(x.reshape((3,1)))
-        corrected_x = x_bar + K @ (z - z_hat)
-
+        K = np.dot(np.dot(self.P, np.transpose(H)), np.linalg.inv(np.dot(np.dot(H, self.P), np.transpose(H)) + R))
+        
+        corrected_x = x + np.dot(K,(z - z_hat)) 
+        
         self.set_state_vector(corrected_x)
-        self.P = (np.eye(np.shape(K)[0] - K @ H)) @ self.P
+        self.P = self.P - np.dot(np.dot(K,H),self.P)
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
