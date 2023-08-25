@@ -1,5 +1,4 @@
-# teleoperate the robot and perform SLAM
-# will be extended in following milestones for system integration
+# teleoperate the robot, perform SLAM and object detection
 
 # basic python packages
 import numpy as np
@@ -15,11 +14,16 @@ import util.measure as measure # measurements
 import pygame # python package for GUI
 import shutil # python package for file operations
 
-# import SLAM components
+# import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
 from slam.ekf import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
+
+# import CV components
+sys.path.insert(0,"{}/network/".format(os.getcwd()))
+sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
+from network.scripts.detector import Detector
 
 
 class Operate:
@@ -67,6 +71,13 @@ class Operate:
         # initialise images
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
+        self.detector_output = np.zeros([240,320], dtype=np.uint8)
+        if args.ckpt == "":
+            self.detector = None
+            self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
+        else:
+            self.detector = Detector(args.ckpt, use_gpu=False)
+            self.network_vis = np.ones((240, 320,3))* 100
         self.bg = pygame.image.load('pics/gui_mask.jpg')
 
     # wheel control
@@ -105,7 +116,15 @@ class Operate:
             self.ekf.add_landmarks(lms)
             self.ekf.update(lms)
 
-    # save images taken by the camera
+    # using computer vision to detect targets
+    def detect_target(self):
+        if self.command['inference'] and self.detector is not None:
+            self.detector_output, self.network_vis = self.detector.detect_single_image(self.img)
+            self.command['inference'] = False
+            self.file_output = (self.detector_output, self.ekf)
+            self.notification = f'{len(np.unique(self.detector_output))-1} target type(s) detected'
+
+    # save raw images taken by the camera
     def save_image(self):
         f_ = os.path.join(self.folder, f'img_{self.image_id}.png')
         if self.command['save_image']:
@@ -137,6 +156,16 @@ class Operate:
             self.output.write_map(self.ekf)
             self.notification = 'Map is saved'
             self.command['output'] = False
+        # save inference with the matching robot pose and detector labels
+        if self.command['save_inference']:
+            if self.file_output is not None:
+                #image = cv2.cvtColor(self.file_output[0], cv2.COLOR_RGB2BGR)
+                self.pred_fname = self.output.write_image(self.file_output[0],
+                                                        self.file_output[1])
+                self.notification = f'Prediction is saved to {operate.pred_fname}'
+            else:
+                self.notification = f'No prediction in buffer, save ignored'
+            self.command['save_inference'] = False
 
     # paint the GUI            
     def draw(self, canvas):
@@ -154,10 +183,17 @@ class Operate:
                                 position=(h_pad, v_pad)
                                 )
 
+        # for target detector (M3)
+        detector_view = cv2.resize(self.network_vis,
+                                   (320, 240), cv2.INTER_NEAREST)
+        self.draw_pygame_window(canvas, detector_view, 
+                                position=(h_pad, 240+2*v_pad)
+                                )
+
         # canvas.blit(self.gui_mask, (0, 0))
-        self.put_caption(canvas, caption='SLAM', position=(2*h_pad+320, v_pad)) # M2
-        self.put_caption(canvas, caption='Detector (M3)',
-                         position=(h_pad, 240+2*v_pad)) # M3
+        self.put_caption(canvas, caption='SLAM', position=(2*h_pad+320, v_pad))
+        self.put_caption(canvas, caption='Detector',
+                         position=(h_pad, 240+2*v_pad))
         self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad))
 
         notifiation = TEXT_FONT.render(self.notification,
@@ -191,20 +227,18 @@ class Operate:
     # keyboard teleoperation        
     def update_keyboard(self):
         for event in pygame.event.get():
-            ########### replace with your M1 codes ###########
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.command['motion'] = [1.5, 0]
+                pass # TODO: replace with your M1 code
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.command['motion'] = [-1.5, 0]
+                pass # TODO: replace with your M1 code
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0, 2]
+                pass # TODO: replace with your M1 code
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0, -2]
-            ####################################################
+                pass # TODO: replace with your M1 code
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
@@ -242,14 +276,17 @@ class Operate:
                         self.notification = 'SLAM is running'
                     else:
                         self.notification = 'SLAM is paused'
+            # run object detector
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                self.command['inference'] = True
+            # save object detection outputs
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
+                self.command['save_inference'] = True
             # quit
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.quit = True
-                
-            else:
-                self.command['motion'] = [0, 0]
         if self.quit:
             pygame.quit()
             sys.exit()
@@ -264,6 +301,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
+    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
@@ -272,7 +310,7 @@ if __name__ == "__main__":
     
     width, height = 700, 660
     canvas = pygame.display.set_mode((width, height))
-    pygame.display.set_caption('ECE4078 2022 Lab')
+    pygame.display.set_caption('ECE4078 2021 Lab')
     pygame.display.set_icon(pygame.image.load('pics/8bit/pibot5.png'))
     canvas.fill((0, 0, 0))
     splash = pygame.image.load('pics/loading.png')
@@ -306,6 +344,11 @@ if __name__ == "__main__":
         operate.update_slam(drive_meas)
         operate.record_data()
         operate.save_image()
+        operate.detect_target()
         # visualise
         operate.draw(canvas)
         pygame.display.update()
+
+
+
+
