@@ -89,13 +89,10 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose  
-        x_fruit = box[0]
-        y_fruit = box[1]
-
         # This is the default code which estimates every pose to be (0,0)
         target_pose = {'x': 0.0, 'y': 0.0}
         d = focal_length * true_height/box[3][0]
-        u0 = 320 #camera_matrix[0][2]
+        u0 = 320 #camera_matrix[0][-1]
         theta = np.arctan((box[0][0]- u0)/focal_length)
         target_pose['x'] = robot_pose[0][0] + d*np.cos(robot_pose[2][0] + theta)
         target_pose['y'] = robot_pose[1][0] + d*np.sin(robot_pose[2][0] + theta)
