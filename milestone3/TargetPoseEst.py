@@ -59,6 +59,10 @@ def get_image_info(base_dir, file_path, image_poses):
 # estimate the pose of a target based on size and location of its bounding box in the robot's camera view and the robot's pose
 def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     camera_matrix = camera_matrix
+    fx = camera_matrix[0][0]
+    fy = camera_matrix[1][1]
+    u0 = camera_matrix[0][-1]
+    v0 = camera_matrix[1][-1]
     focal_length = camera_matrix[0][0]
     # actual sizes of targets [For the simulation models]
     # You need to replace these values for the real world objects
@@ -85,6 +89,9 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         
         ######### Replace with your codes #########
         # TODO: compute pose of the target based on bounding box info and robot's pose  
+        x_fruit = box[0]
+        y_fruit = box[1]
+
         # This is the default code which estimates every pose to be (0,0)
         target_pose = {'x': 0.0, 'y': 0.0}
         d = focal_length * true_height/box[3][0]
