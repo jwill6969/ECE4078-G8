@@ -84,8 +84,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
     # for each target in each detection output, estimate its pose
     for target_num in completed_img_dict.keys():
         box = completed_img_dict[target_num]['target'] # [[x],[y],[width],[height]]
-        #robot_pose = completed_img_dict[target_num]['robot'] # [[x], [y], [theta]]
-        robot_pose = [[0.8],[0],[np.pi/2]]
+        robot_pose = completed_img_dict[target_num]['robot'] # [[x], [y], [theta]]
         true_height = target_dimensions[target_num-1][2]
         
         ######### Replace with your codes #########
@@ -93,7 +92,7 @@ def estimate_pose(base_dir, camera_matrix, completed_img_dict):
         # This is the default code which estimates every pose to be (0,0)
         target_pose = {'x': 0.0, 'y': 0.0}
         d = focal_length * true_height/box[3][0]
-        u0 = 320 #camera_matrix[0][-1]
+        # u0 = 320 #camera_matrix[0][-1]
         theta = np.arctan((box[0][0]- u0)/focal_length)
         target_pose['x'] = robot_pose[0][0] + d*np.cos(robot_pose[2][0] + theta)
         target_pose['y'] = robot_pose[1][0] + d*np.sin(robot_pose[2][0] + theta)
@@ -125,16 +124,7 @@ def merge_estimations(target_map):
     ######### Replace with your codes #########
     # TODO: the operation below is the default solution, which simply takes the first estimation for each target type.
     # Replace it with a better merge solution.
-    if len(redapple_est) > num_per_target:
-        redapple_est = redapple_est[0:num_per_target]
-    if len(greenapple_est) > num_per_target:
-        greenapple_est = greenapple_est[0:num_per_target]
-    if len(orange_est) > num_per_target:
-        orange_est = orange_est[0:num_per_target]
-    if len(mango_est) > num_per_target:
-        mango_est = mango_est[0:num_per_target]
-    if len(capsicum_est) > num_per_target:
-        capsicum_est = capsicum_est[0:num_per_target]
+    
 
     for i in range(num_per_target):
         try:
