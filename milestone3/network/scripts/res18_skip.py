@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from torch.optim import lr_scheduler
 from torchvision import models
-from torchvision.models.resnet import model_urls
+#from torchvision.models.resnet import model_urls
 
 
 class Resnet18Skip(nn.Module):

@@ -235,7 +235,7 @@ class Operate:
                 self.command['motion'] = [-2,0]  
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [1,2]
+                self.command['motion'] = [0,2]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 self.command['motion'] = [0,-2]
