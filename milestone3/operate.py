@@ -76,7 +76,7 @@ class Operate:
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
         else:
-            self.detector = Detector(args.ckpt, use_gpu=False)
+            self.detector = Detector(args.ckpt)
             self.network_vis = np.ones((240, 320,3))* 100
         self.bg = pygame.image.load('pics/gui_mask.jpg')
 
@@ -119,10 +119,19 @@ class Operate:
     # using computer vision to detect targets
     def detect_target(self):
         if self.command['inference'] and self.detector is not None:
-            self.detector_output, self.network_vis = self.detector.detect_single_image(self.img)
-            self.command['inference'] = False
-            self.file_output = (self.detector_output, self.ekf)
-            self.notification = f'{len(np.unique(self.detector_output))-1} target type(s) detected'
+            
+            # need to convert the colour before passing to YOLO
+            yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
+
+            self.detector_output, self.network_vis = self.detector.detect_single_image(yolo_input_img)
+
+            # covert the colour back for display purpose
+            self.network_vis = cv2.cvtColor(self.network_vis, cv2.COLOR_RGB2BGR)
+
+            # self.command['inference'] = False     # uncomment this if you do not want to continuously predict
+            self.file_output = (yolo_input_img, self.ekf)
+
+            # self.notification = f'{len(self.detector_output)} target type(s) detected'
 
     # save raw images taken by the camera
     def save_image(self):
@@ -185,7 +194,7 @@ class Operate:
 
         # for target detector (M3)
         detector_view = cv2.resize(self.network_vis,
-                                   (320, 240), cv2.INTER_NEAREST)
+                                (320, 240), cv2.INTER_NEAREST)
         self.draw_pygame_window(canvas, detector_view, 
                                 position=(h_pad, 240+2*v_pad)
                                 )
@@ -193,11 +202,11 @@ class Operate:
         # canvas.blit(self.gui_mask, (0, 0))
         self.put_caption(canvas, caption='SLAM', position=(2*h_pad+320, v_pad))
         self.put_caption(canvas, caption='Detector',
-                         position=(h_pad, 240+2*v_pad))
+                        position=(h_pad, 240+2*v_pad))
         self.put_caption(canvas, caption='PiBot Cam', position=(h_pad, v_pad))
 
         notifiation = TEXT_FONT.render(self.notification,
-                                          False, text_colour)
+                                        False, text_colour)
         canvas.blit(notifiation, (h_pad+10, 596))
 
         time_remain = self.count_down - time.time() + self.start_time
@@ -221,7 +230,7 @@ class Operate:
     @staticmethod
     def put_caption(canvas, caption, position, text_colour=(200, 200, 200)):
         caption_surface = TITLE_FONT.render(caption,
-                                          False, text_colour)
+                                        False, text_colour)
         canvas.blit(caption_surface, (position[0], position[1]-25))
 
     # keyboard teleoperation        
@@ -303,7 +312,7 @@ if __name__ == "__main__":
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
-    parser.add_argument("--ckpt", default='network/scripts/model/model.best.pth')
+    parser.add_argument("--ckpt", default='network/models/yolov8_model.pt')
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
