@@ -10,6 +10,7 @@ from machinevisiontoolbox import Image
 
 import matplotlib.pyplot as plt
 import PIL
+from scipy.signal import medfilt
 
 # use the machinevision toolbox to get the bounding box of the detected target(s) in an image
 def get_bounding_box(target_number, image_path):
@@ -125,6 +126,102 @@ def merge_estimations(target_map):
     # TODO: the operation below is the default solution, which simply takes the first estimation for each target type.
     # Replace it with a better merge solution.
     
+    if len(redapple_est) > num_per_target:
+        filtered = []
+        xcoords = medfilt(np.array(redapple_est)[:, 0],kernel_size=3)
+        ycoords = medfilt(np.array(redapple_est)[:, 1],kernel_size=3)
+        q75_x, q25_x = np.percentile(xcoords,[75,25])
+        range_x = [q25_x+1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
+
+
+        q75_y,q25_y = np.percentile(ycoords,[75,25])
+        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
+        print(range_x)
+        print(range_y)
+        for i in range(len(redapple_est)):
+            print(redapple_est[i])
+            if (redapple_est[i][0] < range_x[1] and redapple_est[i][0] > range_x[0]):
+                if (redapple_est[i][1] < range_y[1] and redapple_est[i][1] > range_y[0]):
+                    filtered.append(redapple_est[i])
+            
+        
+        redapple_est = np.average(filtered,axis=0)
+        
+    if len(greenapple_est) > num_per_target:
+        filtered = []
+        xcoords = np.array(greenapple_est)[:, 0]
+        ycoords = np.array(greenapple_est)[:, 1]
+        q75_x, q25_x = np.percentile(xcoords,[75,25])
+        range_x = [q25_x+1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
+
+
+        q75_y,q25_y = np.percentile(ycoords,[75,25])
+        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
+
+        for i in range(len(greenapple_est)):
+            if (greenapple_est[i][0] < range_x[1] and greenapple_est[i][0] > range_x[0]):
+                if (greenapple_est[i][1] < range_y[1] and greenapple_est[i][1] > range_y[0]):
+                    filtered.append(greenapple_est[i])
+            
+
+        greenapple_est = np.average(filtered,axis=0)
+
+    if len(orange_est) > num_per_target:
+        filtered = []
+        xcoords = np.array(orange_est)[:, 0]
+        ycoords = np.array(orange_est)[:, 1]
+        q75_x, q25_x = np.percentile(xcoords,[75,25])
+        range_x = [q25_x+1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
+
+
+        q75_y,q25_y = np.percentile(ycoords,[75,25])
+        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
+
+        for i in range(len(orange_est)):
+            if (orange_est[i][0] < range_x[1] and orange_est[i][0] > range_x[0]):
+                if (orange_est[i][1] < range_y[1] and orange_est[i][1] > range_y[0]):
+                    filtered.append(orange_est[i])
+            
+
+        orange_est = np.average(filtered,axis=0) 
+
+    if len(mango_est) > num_per_target:
+        filtered = []
+        xcoords = np.array(mango_est)[:, 0]
+        ycoords = np.array(mango_est)[:, 1]
+        q75_x, q25_x = np.percentile(xcoords,[75,25])
+        range_x = [q25_x+1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
+
+
+        q75_y,q25_y = np.percentile(ycoords,[75,25])
+        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
+
+        for i in range(len(mango_est)):
+            if (mango_est[i][0] < range_x[1] and mango_est[i][0] > range_x[0]):
+                if (mango_est[i][1] < range_y[1] and mango_est[i][1] > range_y[0]):
+                    filtered.append(mango_est[i])
+            
+
+        mango_est = np.average(filtered,axis=0)
+
+    if len(capsicum_est) > num_per_target:
+        filtered = []
+        xcoords = np.array(capsicum_est)[:, 0]
+        ycoords = np.array(capsicum_est)[:, 1]
+        q75_x, q25_x = np.percentile(xcoords,[75,25])
+        range_x = [q25_x+1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
+
+
+        q75_y,q25_y = np.percentile(ycoords,[75,25])
+        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
+
+        for i in range(len(capsicum_est)):
+            if (capsicum_est[i][0] < range_x[1] and capsicum_est[i][0] > range_x[0]):
+                if (capsicum_est[i][1] < range_y[1] and capsicum_est[i][1] > range_y[0]):
+                    filtered.append(capsicum_est[i])
+            
+
+        capsicum_est = np.average(filtered,axis=0)
 
     for i in range(num_per_target):
         try:
