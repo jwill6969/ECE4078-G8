@@ -54,8 +54,8 @@ def estimate_pose(camera_matrix, obj_info, robot_pose):
     # training image size 320x240p
     image_width = 640 # change this if your training image is in a different size (check details of pred_0.png taken by your robot)
     x_shift = image_width/2 - pixel_center              # x distance between bounding box centre and centreline in camera view
-    theta = np.arctan(x_shift/focal_length)     # angle of object relative to the robot
-    ang = theta + robot_pose[2]     # angle of object in the world frame
+    theta = (np.arctan(x_shift/focal_length))     # angle of object relative to the robot
+    ang = theta + robot_pose[2]     # angle of object in the world frame with 2% error mitigation
     
    # relative object location
     distance_obj = distance/np.cos(theta) # relative distance between robot and object
@@ -65,8 +65,8 @@ def estimate_pose(camera_matrix, obj_info, robot_pose):
     #print(f'relative_pose: {relative_pose}')
 
     # location of object in the world frame using rotation matrix
-    delta_x_world = x_relative * np.cos(ang) - y_relative * np.sin(ang)
-    delta_y_world = x_relative * np.sin(ang) + y_relative * np.cos(ang)
+    delta_x_world = (x_relative * np.cos(ang) - y_relative * np.sin(ang)) # 1.17159
+    delta_y_world = (x_relative * np.sin(ang) + y_relative * np.cos(ang)) # 1.17159
     # add robot pose with delta target pose
     target_pose = {'y': (robot_pose[1]+delta_y_world)[0],
                    'x': (robot_pose[0]+delta_x_world)[0]}
@@ -74,7 +74,24 @@ def estimate_pose(camera_matrix, obj_info, robot_pose):
     #print(f'target_pose: {target_pose}')
 
     return target_pose
+def filtering(estimation_array):
+    # estimation array =[[x,y],[x,y]]
+    filtered = []
+    array = []
+    
+    if len(estimation_array)== 1:
+        filtered = estimation_array
+    else:
+        for i in range(len(estimation_array)):
+            array.append(np.sqrt(estimation_array[i][0]**2+estimation_array[i][1]**2))
+        for i in range(len(estimation_array)):
+            if ((array[i]>np.quantile(array,0.25)) and (array[i]<np.quantile(array,0.75))):
+                filtered.append(estimation_array[i])
 
+    if len(filtered) == 0:
+        filtered = estimation_array
+    
+    return filtered
 
 def merge_estimations(target_pose_dict):
     num_per_target = 1
@@ -90,16 +107,16 @@ def merge_estimations(target_pose_dict):
 
     ######### Replace with your codes #########
     # TODO: replace it with a solution to merge the multiple occurrences of the same class type (e.g., by a distance threshold)
-    target_est = target_pose_dict
+    
 
     redapple_est = []
     greenapple_est = []
     orange_est = []
     mango_est = []
     capsicum_est = []
-
+    
     for est in target_pose_dict:
-        if est.__contains__("   red apple"):
+        if est.__contains__("red apple"):
             redapple_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
         elif est.__contains__("green apple"):
             greenapple_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
@@ -110,102 +127,42 @@ def merge_estimations(target_pose_dict):
         else:
             orange_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
 
-
-    if len(redapple_est) > num_per_target:
-        filtered = []
-        xcoords = np.array(redapple_est)[:, 0]
-        ycoords = np.array(redapple_est)[:, 1]
-        q75_x, q25_x = np.percentile(xcoords,[75,25])
-        q75_y,q25_y = np.percentile(ycoords,[75,25])
-        range_x = [q25_x-1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)]
-        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)]
-        for i in range(len(redapple_est)):
-            if (redapple_est[i][0] < range_x[1] and redapple_est[i][0] > range_x[0]):
-                if (redapple_est[i][1] < range_y[1] and redapple_est[i][1] > range_y[0]):
-                    filtered.append(redapple_est[i])
-        redapple_est = np.average(filtered,axis=0)  
-
-
-    if len(greenapple_est) > num_per_target:
-        filtered = []
-        xcoords = np.array(greenapple_est)[:, 0]
-        ycoords = np.array(greenapple_est)[:, 1]
-        q75_x, q25_x = np.percentile(xcoords,[75,25])
-        range_x = [q25_x-1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
-        q75_y,q25_y = np.percentile(ycoords,[75,25])
-        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
-        for i in range(len(greenapple_est)):
-            if (greenapple_est[i][0] < range_x[1] and greenapple_est[i][0] > range_x[0]):
-                if (greenapple_est[i][1] < range_y[1] and greenapple_est[i][1] > range_y[0]):
-                    filtered.append(greenapple_est[i])
-        greenapple_est = np.average(filtered,axis=0)  
-
-    if len(orange_est) > num_per_target:
-        filtered = []
-        xcoords = np.array(orange_est)[:, 0]
-        ycoords = np.array(orange_est)[:, 1]
-        q75_x, q25_x = np.percentile(xcoords,[75,25])
-        range_x = [q25_x-1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
-        q75_y,q25_y = np.percentile(ycoords,[75,25])
-        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
-        for i in range(len(orange_est)):
-            if (orange_est[i][0] < range_x[1] and orange_est[i][0] > range_x[0]):
-                if (orange_est[i][1] < range_y[1] and orange_est[i][1] > range_y[0]):
-                    filtered.append(orange_est[i])
-        orange_est = np.average(filtered,axis=0) 
-
-    if len(mango_est) > num_per_target:
-        filtered = []
-        xcoords = np.array(mango_est)[:, 0]
-        ycoords = np.array(mango_est)[:, 1]
-        q75_x, q25_x = np.percentile(xcoords,[75,25])
-        range_x = [q25_x-1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
-        q75_y,q25_y = np.percentile(ycoords,[75,25])
-        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
-        for i in range(len(mango_est)):
-            if (mango_est[i][0] < range_x[1] and mango_est[i][0] > range_x[0]):
-                if (mango_est[i][1] < range_y[1] and mango_est[i][1] > range_y[0]):
-                    filtered.append(mango_est[i])
-        mango_est = np.average(filtered,axis=0)
-
-    if len(capsicum_est) > num_per_target:
-        filtered = []
-        xcoords = np.array(capsicum_est)[:, 0]
-        ycoords = np.array(capsicum_est)[:, 1]
-        q75_x, q25_x = np.percentile(xcoords,[75,25])
-        range_x = [q25_x-1.5*(q75_x-q25_x), q75_x+1.5*(q75_x-q25_x)] # min max
-        q75_y,q25_y = np.percentile(ycoords,[75,25])
-        range_y = [q25_y-(1.5*q75_y-q25_y) ,q75_y+(1.5*q75_y-q25_y)] # min max
-        for i in range(len(capsicum_est)):
-            if (capsicum_est[i][0] < range_x[1] and capsicum_est[i][0] > range_x[0]):
-                if (capsicum_est[i][1] < range_y[1] and capsicum_est[i][1] > range_y[0]):
-                    filtered.append(capsicum_est[i])
-        capsicum_est = np.average(filtered,axis=0)
-
-    target_est = target_pose_dict
-    target_est = {
-        "red apple" : {
-            "x":redapple_est[0],
-            "y":redapple_est[1]
-        },
-        "green apple": {
-            "x":greenapple_est[0],
-            "y":greenapple_est[1]
-        },
-        "orange": {
-            "x":orange_est[0],
-            "y":orange_est[1]
-        },
-        "mango": {
-            "x":mango_est[0],
-            "y":mango_est[1] 
-        },
-        "capsicum":{
-            "x":capsicum_est[0],
-            "y":capsicum_est[1]
-        }
-    }
+    print(redapple_est)
+    print(greenapple_est)
+    print(orange_est)
+    print(mango_est)
+    print(capsicum_est)
+    redapple_est = [np.average(filtering(redapple_est),axis=0)]     
+    greenapple_est = [np.average(filtering(greenapple_est),axis=0)] 
+    orange_est = [np.average(filtering(orange_est),axis=0)]
+    mango_est = [np.average(filtering(mango_est),axis=0)]
+    capsicum_est = [np.average(filtering(capsicum_est),axis=0)]
     
+    if len(redapple_est)!=0:
+        target_est["redapple_0"] = {
+            "x":redapple_est[0][0],
+            "y":redapple_est[0][1]
+        }
+    if len(greenapple_est)!=0:
+        target_est["greenapple_0"] = {
+            "x":greenapple_est[0][0],
+            "y":greenapple_est[0][1]
+        }
+    if len(orange_est)!=0:
+        target_est["orange_0"] = {
+            "x":orange_est[0][0],
+            "y":orange_est[0][1]
+        }
+    if len(mango_est)!=0:
+        target_est["mango_0"] = {
+            "x":mango_est[0][0],
+            "y":mango_est[0][1]
+        }
+    if len(capsicum_est)!=0:
+        target_est["capsicum_0"] = {
+            "x":capsicum_est[0][0],
+            "y":capsicum_est[0][1]
+        }
     return target_est
 
 
@@ -248,7 +205,7 @@ if __name__ == "__main__":
     # merge the estimations of the targets so that there are at most 3 estimations of each target type
     target_est = {}
     target_est = merge_estimations(target_pose_dict)
-    print(target_est)
+    #print(target_est)
     # save target pose estimations
     with open(f'{script_dir}/lab_output/targets.txt', 'w') as fo:
         json.dump(target_est, fo, indent=4)

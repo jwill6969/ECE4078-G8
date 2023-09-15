@@ -77,7 +77,6 @@ if __name__ == '__main__':
     orange_dist = compute_dist(orange_gt, orange_est)
     mango_dist = compute_dist(mango_gt, mango_est)
     capsicum_dist = compute_dist(capsicum_gt, capsicum_est)
-    
     av_dist = (redapple_dist+greenapple_dist+orange_dist+mango_dist+capsicum_dist)/5
     
     print("Average distances between the targets and the closest estimations:")
