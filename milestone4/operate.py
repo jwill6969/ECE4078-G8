@@ -359,6 +359,8 @@ if __name__ == "__main__":
         # visualise
         operate.draw(canvas)
         pygame.display.update()
+        with open("level_1.py") as f:
+            exec(f.read())
 
 
 
