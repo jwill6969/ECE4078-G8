@@ -88,21 +88,21 @@ class EKF:
     def predict(self, raw_drive_meas):
 
         F = self.state_transition(raw_drive_meas)
-        
         x = self.get_state_vector()
-        self.robot.drive(raw_drive_meas)
-        # TODO: add your codes here to compute the predicted x
-        Q = self.predict_covariance(raw_drive_meas)
         
-        self.P = np.dot(np.dot(F, self.P), np.transpose(F))+Q
-
+        # TODO: add your codes here to compute the predicted x
+        self.robot.drive(raw_drive_meas)
+        Q = self.predict_covariance(raw_drive_meas)
+        self.P = F @ self.P @ F.T + Q
+        
     # the update step of EKF
     def update(self, measurements):
         if not measurements:
             return
-
+        
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
+        tags = [tag<=10 for tag in tags]
         idx_list = [self.taglist.index(tag) for tag in tags]
 
         # Stack measurements and set covariance
@@ -118,13 +118,11 @@ class EKF:
 
         x = self.get_state_vector()
 
-        # TODO: add your codes here to compute the updated x
-        K = np.dot(np.dot(self.P, np.transpose(H)), np.linalg.inv(np.dot(np.dot(H, self.P), np.transpose(H)) + R))
-        
-        corrected_x = x + np.dot(K,(z - z_hat)) 
-        
-        self.set_state_vector(corrected_x)
-        self.P = self.P - np.dot(np.dot(K,H),self.P)
+        # TODO: add your codes here to compute the updated x (Update/ correct)
+        K = self.P @ H.T @ np.linalg.inv(H @ self.P @ H.T + R)
+        x_hat = x + K @ (z - z_hat)
+        self.set_state_vector(x_hat)        
+        self.P = (np.eye(x_hat.shape[0]) - (K @ H)) @ self.P 
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
@@ -135,7 +133,7 @@ class EKF:
     def predict_covariance(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
         Q = np.zeros((n,n))
-        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.01*np.eye(3)
+        Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.001*np.eye(3) # Testing changing 0.01 to 0.001
         return Q
 
     def add_landmarks(self, measurements):
@@ -285,3 +283,5 @@ class EKF:
         else:
             angle = 0
         return (axes_len[0], axes_len[1]), angle
+
+ 

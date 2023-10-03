@@ -13,6 +13,7 @@ import util.DatasetHandler as dh # save/load functions
 import util.measure as measure # measurements
 import pygame # python package for GUI
 import shutil # python package for file operations
+from util.utilityFunctions import *
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
@@ -331,7 +332,8 @@ if __name__ == "__main__":
                     pygame.image.load('pics/8bit/pibot4.png'),
                      pygame.image.load('pics/8bit/pibot5.png')]
     pygame.display.update()
-
+    
+    
     start = False
 
     counter = 40
@@ -356,7 +358,8 @@ if __name__ == "__main__":
         operate.record_data()
         operate.save_image()
         operate.detect_target()
-        # visualise
+        
+        # # visualise
         operate.draw(canvas)
         pygame.display.update()
         with open("level_1.py") as f:

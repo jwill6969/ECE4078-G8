@@ -91,9 +91,13 @@ class EKF:
         
         x = self.get_state_vector()
         self.robot.drive(raw_drive_meas)
+        print("shape of F",F)
+        print("shape of x",x.shape)
+        
         # TODO: add your codes here to compute the predicted x
         Q = self.predict_covariance(raw_drive_meas)
-        
+        print("shape of Q",Q.shape)
+        print("shape of P",self.P)
         self.P = np.dot(np.dot(F, self.P), np.transpose(F))+Q
 
     # the update step of EKF
