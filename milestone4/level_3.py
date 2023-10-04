@@ -77,13 +77,15 @@ def drive_to_point(waypoint):
     
     # turn towards the waypoint
     print("turn_diff",turn_diff)
-    turn_time = turn_diff*baseline/(2.0*scale*angular_vel) # replace with your calculation
+    turn_time = turn_to_point(robot_pose=robot_pose,waypoint=waypoint,wheel_vel=angular_vel) # replace with your calculation
     # print("Turning for {:.2f} seconds".format(turn_time))
     if np.abs(turn_time) >= 0.01:
         if turn_time < 0:
             command = [0, -0.55]
         if turn_time > 0:
             command = [0, 0.55]
+        if np.abs(turn_time) > 0.3:
+            command[1] = command[1]*0.8
     else:
         command = [0, 0]
     print("turn time",turn_time)
