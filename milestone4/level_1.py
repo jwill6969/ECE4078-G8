@@ -49,21 +49,22 @@ def drive_to_point(waypoint):
     
     y_diff = waypoint[1] - robot_pose[1]
     pos_diff = np.hypot(x_diff, y_diff)
-    # wrap robot orientation to (-pi, pi]
-    robot_orient = (robot_pose[2]) % (2*np.pi)
-    if robot_orient > np.pi:
-        robot_orient -= 2*np.pi
+    # # wrap robot orientation to (-pi, pi]
+    # robot_orient = (robot_pose[2]) % (2*np.pi)
+    # if robot_orient > np.pi:
+    #     robot_orient -= 2*np.pi
     
-    # compute min turning angle to waypoint
-    turn_diff = np.arctan2(y_diff, x_diff) - robot_orient
-    if turn_diff > np.pi:
-        turn_diff -= 2*np.pi
-    elif turn_diff < -np.pi:
-        turn_diff += 2*np.pi
+    # # compute min turning angle to waypoint
+    # turn_diff = np.arctan2(y_diff, x_diff) - robot_orient
+    # if turn_diff > np.pi:
+    #     turn_diff -= 2*np.pi
+    # elif turn_diff < -np.pi:
+    #     turn_diff += 2*np.pi
     
-    # turn towards the waypoint
-    print("turn_diff",turn_diff)
-    turn_time = turn_diff*baseline/(2.0*scale*angular_vel) # replace with your calculation
+    # # turn towards the waypoint
+    # print("turn_diff",turn_diff)
+    # turn_time = turn_diff*baseline/(2.0*scale*angular_vel) # replace with your calculation
+    turn_time = turn_to_point(waypoint, robot_pose, angular_vel)
     # print("Turning for {:.2f} seconds".format(turn_time))
     if np.abs(turn_time) >= 0.01:
         if turn_time < 0:
@@ -76,14 +77,15 @@ def drive_to_point(waypoint):
 
     # if np.abs(turn_time) >= 0.01:
     #     if turn_diff > 0: # turn left
-    #         lv, rv = operate.pibot.set_velocity([-0.1, 1], turning_tick=angular_vel, time=turn_time)
+    #         lv, rv = operate.pibot.set_velocity([-0.1, 1], turning_tick=angular_vel, time=np.abs(turn_time))
     #     elif turn_diff < 0: # turn right
-    #         lv, rv = operate.pibot.set_velocity([0.7, -1], turning_tick=angular_vel, time=turn_time)
+    #         lv, rv = operate.pibot.set_velocity([0.7, -1], turning_tick=angular_vel, time=np.abs(turn_time))
     # else:
     lv, rv = operate.pibot.set_velocity(command, turning_tick=angular_vel, time=np.abs(turn_time))
     turn_drive_meas = measure.Drive(lv, rv, turn_time)
     time.sleep(0.3)
     slam_estimation(turn_drive_meas)
+    #turn_to_point(waypoint=waypoint,robot_pose=get_robot_pose(operate),wheel_vel=angular_vel)
     # print(operate.ekf.robot.state)
 
     # print("Driving for {:.2f} seconds".format(drive_time))
@@ -92,7 +94,7 @@ def drive_to_point(waypoint):
     # # after turning, drive straight to the waypoint
     drive_time = pos_diff/(scale*linear_vel)
     if np.abs(drive_time) > 0.01:
-        command = [0.8, 0]
+        command = [0.75, 0]
     else:
         command = [0, 0]
     # lv += command[1] * angular_tick
@@ -100,7 +102,7 @@ def drive_to_point(waypoint):
 
     print("drive time",drive_time)
     # #print("Driving for {:.2f} seconds".format(drive_time))
-    lv, rv = ppi.set_velocity(command, tick=linear_vel, time=drive_time[0])
+    lv, rv = operate.pibot.set_velocity(command, tick=linear_vel, time=drive_time[0])
     drive_meas = measure.Drive(lv, rv, np.abs(drive_time))
     time.sleep(0.3)
     slam_estimation(drive_meas)
@@ -130,21 +132,48 @@ def slam_estimation(drive_meas=None):
         drive_meas = measure.Drive(lv, rv, 0)
         operate.take_pic()
         operate.update_slam(drive_meas)
+        operate.ekf.robot.state[2] = clamp_angle(operate.ekf.robot.state[2])
         # operate.draw(canvas)
         # pygame.display.update()
     elif drive_meas != None:
         operate.take_pic()
-        landmarks,_ = operate.aruco_det.detect_marker_positions(operate.img)
-        operate.ekf.predict(drive_meas)
-        operate.ekf.update(landmarks)
+        # landmarks,_ = operate.aruco_det.detect_marker_positions(operate.img)
+        operate.update_slam(drive_meas)
+        operate.ekf.robot.state[2] = clamp_angle(operate.ekf.robot.state[2])
         # operate.draw(canvas)
         # pygame.display.update()
     else:
         return
+    
 
-def get_robot_pose(operate):
-    #print(operate.ekf.robot.state)
-    return operate.ekf.robot.state
+def localise():
+    angular_wheel_vel = 20
+    turning_tick = 5
+    tick = 10
+    slam_estimation()
+    for pos in aruco_true_pos:
+        robot_pose = get_robot_pose(operate)
+        turn_time = turn_to_point(pos[:2], robot_pose, angular_wheel_vel)
+        if np.abs(turn_time) >= 0.01:
+            if turn_time < 0:
+                command = [0, -0.55]
+            if turn_time > 0:
+                command = [0, 0.55]
+            else:
+                command = [0, 0]
+
+        lv, rv = operate.pibot.set_velocity(command, 
+                                turning_tick = angular_wheel_vel, 
+                                time=np.abs(turn_time))
+        # lv -= command[0] * tick
+        # rv -= command[0] * tick
+        print("turning")
+        drive_meas = measure.Drive(lv, rv, np.abs(turn_time))
+        time.sleep(0.3)
+        slam_estimation(drive_meas)
+        robot_pose = get_robot_pose(operate)
+    return
+
 
 def PATH(waypoint):
     # PATH should go to all the waypoints in the list
@@ -187,7 +216,8 @@ def PATH(waypoint):
     for i in range((len(path))):
         print("waypoint",path[i]) 
         drive_to_point(path[i])
-        print(get_robot_pose(operate))     
+        print(get_robot_pose(operate))
+    localise()     
     time.sleep(3)
     #drive_to_point(waypoint)
         
@@ -197,7 +227,7 @@ def PATH(waypoint):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.27')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
@@ -243,6 +273,7 @@ if __name__ == "__main__":
         slam_estimation()
         checker = PATH(waypoint)
         if (checker):
+            
             print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoint,get_robot_pose(operate)))
         else:
             print("shit doesnt work")
