@@ -33,7 +33,7 @@ def check_scale():
 
 def check_baseline():
     turn_time = baseline*(np.pi*2)/(2*scale*20) # replace with your calculation
-    auto_control([0, 1], tick=20, t=turn_time,turning_tick=20)
+    auto_control([0, 0.75], tick=20, t=turn_time,turning_tick=20)
 
 def check_short_baseline():
     for i in range(12):

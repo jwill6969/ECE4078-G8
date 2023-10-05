@@ -8,7 +8,9 @@ import json
 import ast
 import argparse
 import time
-
+from asyncio.windows_events import NULL
+from cmath import nan
+from pathlib import Path
 # import SLAM components
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
 from slam.ekf import EKF
@@ -18,89 +20,56 @@ from slam.RRTC import RRTC
 from slam.Obstacle import Circle
 from slam.A_star_search import AStarPlanner
 from operate import Operate
+from TargetPoseEst import *
 # import utility functions
 sys.path.insert(0, "{}/utility".format(os.getcwd()))
 from util.pibot import Alphabot
 import util.measure as measure
 from util.utilityFunctions import *
 
-# Waypoint navigation
-# the robot automatically drives to a given [x,y] coordinate
-# additional improvements:
-# you may use different motion model parameters for robot driving on its own or driving while pushing a fruit
-# try changing to a fully automatic delivery approach: develop a path-finding algorithm that produces the waypoints
 def drive_to_point(waypoint):
     # imports camera / wheel calibration parameters 
     fileS = "calibration/param/scale.txt"
     scale = np.loadtxt(fileS, delimiter=',')
     fileB = "calibration/param/baseline.txt"
     baseline = np.loadtxt(fileB, delimiter=',')
-    
-    # TODO: replace with your codes to make the robot drive to the waypoint
-    # One simple strategy is to first turn on the spot facing the waypoint,
-    # then drive straight to the way point
-    linear_tick = 10
-    angular_tick = 5
+
+    tick = 20
     linear_vel = 20
-    angular_vel = 10 # tick to move the robot
+    angular_vel = 20 
     robot_pose = get_robot_pose(operate)
     print("robot_pose",robot_pose)   
     x_diff = waypoint[0] - robot_pose[0]
     
     y_diff = waypoint[1] - robot_pose[1]
     pos_diff = np.hypot(x_diff, y_diff)
-    # wrap robot orientation to (-pi, pi]
-    robot_orient = (robot_pose[2]) % (2*np.pi)
-    if robot_orient > np.pi:
-        robot_orient -= 2*np.pi
-    
-    # compute min turning angle to waypoint
-    turn_diff = np.arctan2(y_diff, x_diff) - robot_orient
-    if turn_diff > np.pi:
-        turn_diff -= 2*np.pi
-    elif turn_diff < -np.pi:
-        turn_diff += 2*np.pi
-    
-    # turn towards the waypoint
-    print("turn_diff",turn_diff)
-    turn_time = turn_diff*baseline/(2.0*scale*angular_vel) # replace with your calculation
-    # print("Turning for {:.2f} seconds".format(turn_time))
+
+    turn_time,curr_wheel_vel = turn_to_point(waypoint, robot_pose, angular_vel)
+
     if np.abs(turn_time) >= 0.01:
         if turn_time < 0:
-            command = [0, -0.55]
+            command = [0, -0.8]
         if turn_time > 0:
-            command = [0, 0.55]
+            command = [0, 0.8]
     else:
         command = [0, 0]
     print("turn time",turn_time)
 
-    # if np.abs(turn_time) >= 0.01:
-    #     if turn_diff > 0: # turn left
-    #         lv, rv = operate.pibot.set_velocity([-0.1, 1], turning_tick=angular_vel, time=turn_time)
-    #     elif turn_diff < 0: # turn right
-    #         lv, rv = operate.pibot.set_velocity([0.7, -1], turning_tick=angular_vel, time=turn_time)
-    # else:
-    lv, rv = operate.pibot.set_velocity(command, turning_tick=angular_vel, time=np.abs(turn_time))
-    turn_drive_meas = measure.Drive(lv, rv, turn_time)
+    lv, rv = operate.pibot.set_velocity(command,tick=tick, turning_tick=curr_wheel_vel, time=np.abs(turn_time[0]))
+    # lv -= command[0] * linear_tick
+    # rv -= command[0] * linear_tick
+    turn_drive_meas = measure.Drive(lv, rv, np.abs(turn_time))
     time.sleep(0.3)
     slam_estimation(turn_drive_meas)
-    # print(operate.ekf.robot.state)
 
-    # print("Driving for {:.2f} seconds".format(drive_time))
-    
-    
-    # # after turning, drive straight to the waypoint
     drive_time = pos_diff/(scale*linear_vel)
     if np.abs(drive_time) > 0.01:
-        command = [0.8, 0]
+        command = [1, 0]
     else:
         command = [0, 0]
-    # lv += command[1] * angular_tick
-    # rv -= command[1] * angular_tick
 
     print("drive time",drive_time)
-    # #print("Driving for {:.2f} seconds".format(drive_time))
-    lv, rv = ppi.set_velocity(command, tick=linear_vel, time=drive_time[0])
+    lv, rv = operate.pibot.set_velocity(command, tick=tick, time=drive_time[0])
     drive_meas = measure.Drive(lv, rv, np.abs(drive_time))
     time.sleep(0.3)
     slam_estimation(drive_meas)
@@ -108,43 +77,69 @@ def drive_to_point(waypoint):
 
     print("Arrived at [{}, {}]".format(waypoint[0], waypoint[1]))
 
-def drive(correction,wheel_vel=10):
-    scale = np.loadtxt("calibration/param/scale.txt", delimiter=',')
-    drive_time = correction/(scale*wheel_vel)
-    
-    print("drive time corr",drive_time)
-    if (correction > 0):
-        lv, rv = ppi.set_velocity([1, 0], tick=wheel_vel, time=drive_time)
-    else:
-        lv, rv = ppi.set_velocity([-1, 0], tick=wheel_vel, time=drive_time)
-    drive_meas = measure.Drive(lv, rv, np.abs(drive_time))
-    slam_estimation(drive_meas)
-    return
-
-
 def slam_estimation(drive_meas=None):
     if not operate or not ppi:
         return
     elif drive_meas == None:
-        lv,rv = ppi.set_velocity([0,0],tick=10, turning_tick=5, time=0)
+        lv,rv = ppi.set_velocity([0,0],tick=20, turning_tick=10, time=0)
         drive_meas = measure.Drive(lv, rv, 0)
         operate.take_pic()
         operate.update_slam(drive_meas)
+        operate.ekf.robot.state[2] = clamp_angle(operate.ekf.robot.state[2])
         # operate.draw(canvas)
         # pygame.display.update()
     elif drive_meas != None:
         operate.take_pic()
-        landmarks,_ = operate.aruco_det.detect_marker_positions(operate.img)
-        operate.ekf.predict(drive_meas)
-        operate.ekf.update(landmarks)
+        # landmarks,_ = operate.aruco_det.detect_marker_positions(operate.img)
+        operate.update_slam(drive_meas)
+        operate.ekf.robot.state[2] = clamp_angle(operate.ekf.robot.state[2])
         # operate.draw(canvas)
         # pygame.display.update()
     else:
         return
+    
 
-def get_robot_pose(operate):
-    #print(operate.ekf.robot.state)
-    return operate.ekf.robot.state
+def localise():
+    angular_wheel_vel = 20
+    turning_tick = 5
+    tick = 10
+    #slam_estimation()
+    for pos in aruco_true_pos:
+        robot_pose = get_robot_pose(operate)
+        turn_time,curr_wheel_vel = turn_to_point(pos[:2], robot_pose, angular_wheel_vel)
+        
+        if np.abs(turn_time) >= 0.01:
+            if turn_time < 0:
+                command = [0, -0.75]
+            if turn_time > 0:
+                command = [0, 0.75]
+            # if np.abs(turn_time) > 1:
+            #     command[1] = command[1]*1.15
+            # else:
+            #     command[1] = command[1]*1.5
+        else:
+            command = [0, 0]
+        
+        lv, rv = operate.pibot.set_velocity(command,tick=tick, turning_tick=curr_wheel_vel, time=np.abs(turn_time[0]))
+        
+        drive_meas = measure.Drive(lv, rv, np.abs(turn_time))
+        time.sleep(0.3)
+        slam_estimation(drive_meas)
+    # turn_time = turn_to_point([0,0], robot_pose, angular_wheel_vel)
+    # if np.abs(turn_time) >= 0.01:
+    #     if turn_time < 0:
+    #         command = [0, -0.75]
+    #     if turn_time > 0:
+    #         command = [0, 0.75]
+    #     else:
+    #         command = [0, 0]
+    # lv, rv = operate.pibot.set_velocity(command, 
+    #                             turning_tick = angular_wheel_vel, 
+    #                             time=np.abs(turn_time))
+    # drive_meas = measure.Drive(lv, rv, np.abs(turn_time))
+    print(get_robot_pose(operate))
+    return
+
 
 def PATH(waypoint):
     # PATH should go to all the waypoints in the list
@@ -182,12 +177,17 @@ def PATH(waypoint):
     for i in range(len(rx)):
         path.append([rx[i],ry[i]])
     path = path[::-1]
+    path = path[1:-1]
     print("path",path)
         # Navigate through the path
     for i in range((len(path))):
         print("waypoint",path[i]) 
         drive_to_point(path[i])
-        print(get_robot_pose(operate))     
+        # if (np.abs(path[i][0])<0.2 and np.abs(path[i][1])<0.2):
+        #     localise()
+        print(get_robot_pose(operate))
+    localise()
+    print("FOUND FRUIT")
     time.sleep(3)
     #drive_to_point(waypoint)
         
@@ -197,7 +197,7 @@ def PATH(waypoint):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Fruit searching")
     parser.add_argument("--map", type=str, default='M4_true_map.txt')
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.27')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
@@ -211,33 +211,53 @@ if __name__ == "__main__":
     # read in the true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("M4_true_map.txt")
     search_list = read_search_list()
-    waypoints = print_target_fruits_pos(search_list, fruits_list, fruits_true_pos,outputs=True)
+    waypoints = print_target_fruits_pos(search_list, fruits_list, fruits_true_pos,output=True)
 
-    
+    waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
     addAruco(operate,aruco_true_pos)
-    
+    print("waypoints",waypoints)
     # The following code is only a skeleton code the semi-auto fruit searching task
     while True:
         # enter the waypoints
         # instead of manually enter waypoints in command line, you can get coordinates by clicking on a map (GUI input), see camera_calibration.py
         
-
+        # x = input("X coordinate of the waypoint: ")
+        # try:
+        #     x = float(x)
+        # except ValueError:
+        #     print("Please enter a number.")
+        #     continue
+        # y = input("Y coordinate of the waypoint: ")
+        # try:
+        #     y = float(y)
+        # except ValueError:
+        #     print("Please enter a number.")
+        #     continue
+        # checker = drive_to_point([x,y])
+        # localise()
         # estimate the robot's pose
         
 
         # robot drives to the waypoint
-        
-        slam_estimation()
         for i in range(len(waypoints)):
-            checker = PATH(waypoints[i])
-            if (checker):
-                print("Finished driving to waypoint: {}; New robot pose: {}".format(waypoints[i],get_robot_pose(operate)))
-            else:
-                print("shit doesnt work")
+            arrive = False
+            PATH(waypoints[i])
+            localise()
+            while arrive is False:
+                if (np.sqrt((get_robot_pose(operate)[0]-waypoints[i][0])**2+(get_robot_pose(operate)[1]-waypoints[i][1])**2)>0.5):
+                    PATH([waypoints[i][0]-0.1,waypoints[i][1]-0.1])
+                    localise()
+                else:
+                    arrive = True
+                    print("arrived")
+                
 
+            
+        #drive_to_point(waypoint)
+    
         # exit
         ppi.set_velocity([0, 0])
-        uInput = input("Add a new waypoint? [Y/N]")
-        if uInput == 'N':
-            break
+        # uInput = input("Add a new waypoint? [Y/N]")
+        # if uInput == 'N':
+        break

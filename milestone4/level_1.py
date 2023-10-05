@@ -108,7 +108,6 @@ def localise():
     angular_wheel_vel = 20
     turning_tick = 5
     tick = 10
-    slam_estimation()
     for pos in aruco_true_pos:
         robot_pose = get_robot_pose(operate)
         turn_time = turn_to_point(pos[:2], robot_pose, angular_wheel_vel)
@@ -232,16 +231,10 @@ if __name__ == "__main__":
         except ValueError:
             print("Please enter a number.")
             continue
-
-        # estimate the robot's pose
-        
-
         # robot drives to the waypoint
         waypoint = np.array([x,y])
-        slam_estimation()
         #checker = PATH(waypoint)
         drive_to_point(waypoint)
-        
         localise()
         
         # if (checker):

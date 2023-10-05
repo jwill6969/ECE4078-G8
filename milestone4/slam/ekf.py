@@ -102,7 +102,9 @@ class EKF:
         
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
-        tags = [tag<=10 for tag in tags]
+        for i in range(len(tags)):
+            if tags[i] > 10:
+                tags.remove(tags[i])
         idx_list = [self.taglist.index(tag) for tag in tags]
 
         # Stack measurements and set covariance

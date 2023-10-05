@@ -8,7 +8,8 @@ import sys
 from ultralytics import YOLO    
 from network.scripts.detector import Detector
 from scipy.signal import medfilt
-
+from machinevisiontoolbox import Image
+import PIL
 # list of target fruits and vegs types
 # Make sure the names are the same as the ones used in your YOLO model
 TARGET_TYPES = ['orange','red apple', 'capsicum','green apple','mango']
@@ -165,6 +166,49 @@ def merge_estimations(target_pose_dict):
         }
     return target_est
 
+def get_image_info(base_dir, file_path, image_poses):
+    # there are at most five types of targets in each image
+    target_lst_box = [[], [], [], [], []]
+    target_lst_pose = [[], [], [], [], []]
+    completed_img_dict = {}
+
+    # add the bounding box info of each target in each image
+    # target labels: 1 = redapple, 2 = greenapple, 3 = orange, 4 = mango, 5=capsicum, 0 = not_a_target
+    img_vals = set(Image(base_dir / file_path, grey=True).image.reshape(-1))
+    #print(img_vals)
+    for target_num in img_vals:
+        if target_num > 0:
+            try:
+                box =   (target_num, base_dir/file_path) # [x,y,width,height]
+                pose = image_poses[file_path] # [x, y, theta]
+                target_lst_box[target_num-1].append(box) # bouncing box of target
+                target_lst_pose[target_num-1].append(np.array(pose).reshape(3,)) # robot pose
+            except ZeroDivisionError:
+                pass
+
+    # if there are more than one objects of the same type, combine them
+    for i in range(5):
+        if len(target_lst_box[i])>0:
+            box = np.stack(target_lst_box[i], axis=1)
+            pose = np.stack(target_lst_pose[i], axis=1)
+            completed_img_dict[i+1] = {'target': box, 'robot': pose}
+        
+    return completed_img_dict
+
+def get_bounding_box(target_number, image_path):
+    image = PIL.Image.open(image_path).resize((640,480), PIL.Image.Resampling.NEAREST)
+    target = Image(image)==target_number
+    blobs = target.blobs()
+    [[u1,u2],[v1,v2]] = blobs[0].bbox # bounding box
+    width = abs(u1-u2)
+    height = abs(v1-v2)
+    center = np.array(blobs[0].centroid).reshape(2,)
+    box = [center[0], center[1], int(width), int(height)] # box=[x,y,width,height]
+    # plt.imshow(fruit.image)
+    # plt.annotate(str(fruit_number), np.array(blobs[0].centroid).reshape(2,))
+    # plt.show()
+    # assert len(blobs) == 1, "An image should contain only one object of each target type"
+    return box
 
 # main loop
 if __name__ == "__main__":

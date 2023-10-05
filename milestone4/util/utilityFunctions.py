@@ -51,10 +51,14 @@ def turn_to_point(waypoint, robot_pose, wheel_vel):
     baseline = np.loadtxt(fileB, delimiter=',')
     wheel_vel = wheel_vel # tick to move the robot
     angle_diff = get_angle_robot_to_goal(np.asarray(robot_pose), np.asarray(waypoint))
+    if np.abs(angle_diff)<np.pi/8:
+        cur_wheel_speed=wheel_vel*2
+    else:
+        cur_wheel_speed=wheel_vel
     turn_time = (angle_diff)/(2*wheel_vel*scale/baseline) # replace with your calculation
     #print("Turning for {:.2f} seconds".format(turn_time))
 
-    return turn_time
+    return turn_time,cur_wheel_speed
 
 def get_robot_pose(operate):
     return operate.ekf.robot.state
@@ -162,7 +166,7 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos,output = Fal
                                                   fruit,
                                                   np.round(fruit_true_pos[i][0], 1),
                                                   np.round(fruit_true_pos[i][1], 1)))
-                if output is True: waypoints.append(fruit_true_pos[i][0],fruit_true_pos[i][1])
+                if output is True: waypoints.append([fruit_true_pos[i][0],fruit_true_pos[i][1]])
 
         n_fruit += 1
     if output is True:
