@@ -29,6 +29,7 @@ def parse_user_map(fname : str) -> dict:
         aruco_dict = {}
         for (i, tag) in enumerate(usr_dict["taglist"]):
             aruco_dict[tag] = np.reshape([usr_dict["map"][0][i],usr_dict["map"][1][i]], (2,1))
+        print("arucodict",aruco_dict)
     return aruco_dict
 
 def match_aruco_points(aruco0 : dict, aruco1 : dict):
@@ -44,6 +45,15 @@ def match_aruco_points(aruco0 : dict, aruco1 : dict):
         keys.append(key)
     return keys, np.hstack(points0), np.hstack(points1)
 
+def sort_aruco_list(aruco_dict):
+
+    true_dict = [1,2,3,4,5,6,7,8,9,10]
+    for key in aruco_dict:
+        if not key in true_dict:
+            continue
+    
+            
+    
 def solve_umeyama2d(points1, points2):
     # Solve the optimal transform such that
     # R(theta) * p1_i + t = p2_i
@@ -109,6 +119,7 @@ if __name__ == '__main__':
     us_aruco = parse_user_map(args.estimate)
 
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
+    print(us_vec)
     idx = np.argsort(taglist)
     taglist = np.array(taglist)[idx]
     us_vec = us_vec[:,idx]

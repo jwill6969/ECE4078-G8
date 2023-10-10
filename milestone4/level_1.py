@@ -208,34 +208,24 @@ if __name__ == "__main__":
     # read in the true map
     fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("M4_true_map.txt")
     search_list = read_search_list()
-    print_target_fruits_pos(search_list, fruits_list, fruits_true_pos)
+    waypoints = print_target_fruits_pos(search_list, fruits_list, fruits_true_pos,output=True)
 
     waypoint = [0.0,0.0]
     robot_pose = [0.0,0.0,0.0]
     addAruco(operate,aruco_true_pos)
-    
+    resolution = 0.2
+    robot_radius = 0.09
+    planner = AStarPlanner(aruco_true_pos, fruits_true_pos, resolution, robot_radius)
+    path = [[0,0]]
+    for i in range(len(waypoints)):  
+        rx,ry = planner.planning(path[-1][0],path[-1][1],waypoints[i][0],waypoints[i][1])
+        for i in range(len(rx)):
+            path.append([rx[i],ry[i]])
+        path = path[::-1]
+    print("path",path)
     # The following code is only a skeleton code the semi-auto fruit searching task
     while True:
-        # enter the waypoints
-        # instead of manually enter waypoints in command line, you can get coordinates by clicking on a map (GUI input), see camera_calibration.py
-        
-        x = input("X coordinate of the waypoint: ")
-        try:
-            x = float(x)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        y = input("Y coordinate of the waypoint: ")
-        try:
-            y = float(y)
-        except ValueError:
-            print("Please enter a number.")
-            continue
-        # robot drives to the waypoint
-        waypoint = np.array([x,y])
-        #checker = PATH(waypoint)
-        drive_to_point(waypoint)
-        localise()
+
         
         # if (checker):
             
