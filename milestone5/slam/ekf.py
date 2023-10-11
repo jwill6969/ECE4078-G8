@@ -106,25 +106,25 @@ class EKF:
             if tags[i] > 10:
                 tags.remove(tags[i])
         idx_list = [self.taglist.index(tag) for tag in tags]
-
+        if len(tags) != 0:
         # Stack measurements and set covariance
-        z = np.concatenate([lm.position.reshape(-1,1) for lm in measurements], axis=0)
-        R = np.zeros((2*len(measurements),2*len(measurements)))
-        for i in range(len(measurements)):
-            R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
+            z = np.concatenate([lm.position.reshape(-1,1) for lm in measurements], axis=0)
+            R = np.zeros((2*len(measurements),2*len(measurements)))
+            for i in range(len(measurements)):
+                R[2*i:2*i+2,2*i:2*i+2] = measurements[i].covariance
 
         # Compute own measurements
-        z_hat = self.robot.measure(self.markers, idx_list)
-        z_hat = z_hat.reshape((-1,1),order="F")
-        H = self.robot.derivative_measure(self.markers, idx_list)
+            z_hat = self.robot.measure(self.markers, idx_list)
+            z_hat = z_hat.reshape((-1,1),order="F")
+            H = self.robot.derivative_measure(self.markers, idx_list)
 
-        x = self.get_state_vector()
+            x = self.get_state_vector()
 
         # TODO: add your codes here to compute the updated x (Update/ correct)
-        K = self.P @ H.T @ np.linalg.inv(H @ self.P @ H.T + R)
-        x_hat = x + K @ (z - z_hat)
-        self.set_state_vector(x_hat)        
-        self.P = (np.eye(x_hat.shape[0]) - (K @ H)) @ self.P 
+            K = self.P @ H.T @ np.linalg.inv(H @ self.P @ H.T + R)
+            x_hat = x + K @ (z - z_hat)
+            self.set_state_vector(x_hat)        
+            self.P = (np.eye(x_hat.shape[0]) - (K @ H)) @ self.P 
 
     def state_transition(self, raw_drive_meas):
         n = self.number_landmarks()*2 + 3
