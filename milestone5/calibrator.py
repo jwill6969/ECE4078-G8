@@ -29,16 +29,16 @@ def auto_control(speed,tick,t,turning_tick=NULL):
 def check_scale():
     drive_time = 1/(scale*20)
     print("Driving for {:.2f} seconds".format(drive_time))
-    auto_control([0.8, 0], t=drive_time, tick=20)
+    auto_control([1, 0], t=drive_time, tick=20)
 
 def check_baseline():
     turn_time = baseline*(np.pi*2)/(2*scale*20) # replace with your calculation
-    auto_control([0, 0.75], tick=20, t=turn_time,turning_tick=20)
+    auto_control([0, 0.95], tick=20, t=turn_time,turning_tick=20)
 
 def check_short_baseline():
     for i in range(12):
         turn_time = short_baseline*(np.pi/6)/(2*scale*40) # replace with your calculation
-        auto_control([0, 1], tick=20, t=turn_time,turning_tick=40)
+        auto_control([0, 1.3], tick=20, t=turn_time,turning_tick=40)
         time.sleep(0.5)
 if __name__ == "__main__":
     

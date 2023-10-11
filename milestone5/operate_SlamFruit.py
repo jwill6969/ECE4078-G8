@@ -13,6 +13,7 @@ import util.DatasetHandler as dh # save/load functions
 import util.measure as measure # measurements
 import pygame # python package for GUI
 import shutil # python package for file operations
+from util.utilityFunctions import *
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
@@ -24,6 +25,7 @@ import slam.aruco_detector as aruco
 sys.path.insert(0,"{}/network/".format(os.getcwd()))
 sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
 from network.scripts.detector import Detector
+from TargetPoseEst import merge_estimations,filtering,estimate_pose
 
 
 class Operate:
@@ -72,6 +74,13 @@ class Operate:
         self.img = np.zeros([240,320,3], dtype=np.uint8)
         self.aruco_img = np.zeros([240,320,3], dtype=np.uint8)
         self.detector_output = np.zeros([240,320], dtype=np.uint8)
+        
+        # adding map saving and camera matrix
+        self.saved_map = False
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        fileK = f'{script_dir}/calibration/param/intrinsic.txt'
+        self.camera_matrix = np.loadtxt(fileK, delimiter=',')
+
         if args.ckpt == "":
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
@@ -238,16 +247,16 @@ class Operate:
         for event in pygame.event.get():
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.command['motion'] = [2,0]
+                self.command['motion'] = [1,0]
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.command['motion'] = [-2,0]  
+                self.command['motion'] = [-1,0]  
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0,2]
+                self.command['motion'] = [0, -0.95]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0,-2]
+                self.command['motion'] = [0, -0.95]
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
@@ -256,7 +265,26 @@ class Operate:
                 self.command['save_image'] = True
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                self.command['output'] = True
+                if (self.saved_map is not True):
+                    self.command['output'] = True
+                    self.saved_map = True
+                else:
+                    print("Map Already saved!")
+            #CHECKER: take pic and calculate xy poses to check   
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
+                if (self.saved_map):
+                    self.command['save_image'] = True
+                    robot_pose = self.ekf.robot.state
+                    print("Current Robot Pose:",robot_pose)
+                    # take pic with only 1 fruit at a time
+                    self.take_pic()
+                    yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
+                    bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
+                    #print("bbox",bbox)
+                    for bbox  in bboxlist:
+                        print("estimated fruit position",estimate_pose(self.camera_matrix, bbox, robot_pose))
+                else:
+                    print("no saved map!")
             # reset SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 if self.double_reset_comfirm == 0:
@@ -307,7 +335,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ip", metavar='', type=str, default='localhost')
+    parser.add_argument("--ip", metavar='', type=str, default='192.168.137.27')
     parser.add_argument("--port", metavar='', type=int, default=8000)
     parser.add_argument("--calib_dir", type=str, default="calibration/param/")
     parser.add_argument("--save_data", action='store_true')
@@ -347,6 +375,9 @@ if __name__ == "__main__":
             counter += 2
 
     operate = Operate(args)
+
+    # get camera calibration files
+
 
     while start:
         operate.update_keyboard()

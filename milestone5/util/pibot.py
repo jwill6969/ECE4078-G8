@@ -16,10 +16,10 @@ class Alphabot:
     # tick = forward speed
     # turning_tick = turning speed
     ########################################## 
-    def set_velocity(self, command, tick=10, turning_tick=10, time=0): 
+    def set_velocity(self, command, tick=20, turning_tick=20, time=0): 
         l_vel_unmodded = command[0]*tick - command[1]*turning_tick
         r_vel_unmodded = command[0]*tick + command[1]*turning_tick
-        l_vel = 0.952315*(command[0]*tick - command[1]*turning_tick)
+        l_vel = 1.008*(command[0]*tick - command[1]*turning_tick)
         r_vel = command[0]*tick + command[1]*turning_tick
         if time < 0.07:
             time  =  time*1.6
