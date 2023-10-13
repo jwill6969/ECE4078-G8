@@ -269,8 +269,9 @@ class Operate:
                 if (self.saved_map is not True):
                     self.command['output'] = True
                     self.robot_pose_saved = self.ekf.robot.state
-                    print(self.robot_pose_saved)
+                    self.robot_pose_saved[2] = clamp_angle(self.robot_pose_saved[2])
                     self.saved_map = True
+                    print("robot_pose",self.robot_pose_saved)
                     _,aruco_pos = parse_and_sort()
                     points = transformation_allignment(self.robot_pose_saved,self.end_robot_pose_true,aruco_pos)
                     print("points",points)

@@ -144,7 +144,7 @@ def transformation_allignment(robot_pose,true_robot_pose,points):
     R = np.array(((c, -s), (s, c)))
     print("R",R)
     
-    translate_xy = [t_x,t_y] - R @ np.array([r_x,r_y]).T
+    translate_xy = [r_x,r_y] - R @ np.array([t_x,t_y]).T
     print("translate_xy",translate_xy)
     translated = []
     x_all = []
@@ -152,8 +152,8 @@ def transformation_allignment(robot_pose,true_robot_pose,points):
     for i in range(len(points)):
         x = points[i][0][0] - translate_xy[0]
         y = points[i][1][0] - translate_xy[0]
-        # x = points[i][0][0] - x_translate
-        # y = points[i][1][0] - y_translate
+        #x = points[i][0][0] - x_translate
+        #y = points[i][1][0] - y_translate
         coord = [[x],[y]]
 
         translated_coord = R @ coord
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     parser.add_argument("estimate", type=str, help="The estimate file name.")
     args = parser.parse_args()
     _, aruco_coords = parse_and_sort()
-    robot_pose = [[   0.048832],[    -0.1326],[    -37.682]]
+    robot_pose = [[    0.98507],[   -0.36487],[    -15.726]]
     real_robot_pose = np.zeros((3, 1))
     alligned = transformation_allignment(robot_pose,real_robot_pose,aruco_coords)
     gt_aruco = parse_groundtruth(args.groundtruth)
