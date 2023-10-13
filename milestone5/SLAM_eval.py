@@ -31,6 +31,11 @@ def parse_user_map(fname : str) -> dict:
             aruco_dict[tag] = np.reshape([usr_dict["map"][0][i],usr_dict["map"][1][i]], (2,1))
     return aruco_dict
 
+def sorter(aruco_dict =  None):
+    if aruco_dict is not None:
+        sorted_dict = dict(sorted(aruco_dict.items()))
+    return sorted_dict
+
 def match_aruco_points(aruco0 : dict, aruco1 : dict):
     points0 = []
     points1 = []
@@ -107,10 +112,15 @@ if __name__ == '__main__':
 
     gt_aruco = parse_groundtruth(args.groundtruth)
     us_aruco = parse_user_map(args.estimate)
-
+    print("us_aruco",us_aruco)
+    sorted = sorter(us_aruco)
+    print("sorted",sorted)
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
     idx = np.argsort(taglist)
+    print('idx',idx)
+    print("taglist",taglist)
     taglist = np.array(taglist)[idx]
+    print("taglist",taglist)
     us_vec = us_vec[:,idx]
     gt_vec = gt_vec[:, idx] 
 

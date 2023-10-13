@@ -80,7 +80,8 @@ class Operate:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         fileK = f'{script_dir}/calibration/param/intrinsic.txt'
         self.camera_matrix = np.loadtxt(fileK, delimiter=',')
-
+        self.robot_pose_saved = np.zeros((3, 1)) # robot pose when slam is being saved
+        self.end_robot_pose_true = np.zeros((3, 1)) # true position when slam being saved ()
         if args.ckpt == "":
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
@@ -253,7 +254,7 @@ class Operate:
                 self.command['motion'] = [-1,0]  
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0, -0.95]
+                self.command['motion'] = [0, 0.95]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 self.command['motion'] = [0, -0.95]
@@ -267,6 +268,7 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 if (self.saved_map is not True):
                     self.command['output'] = True
+                    self.robot_pose_saved = self.ekf.robot.state
                     self.saved_map = True
                 else:
                     print("Map Already saved!")
@@ -282,6 +284,7 @@ class Operate:
                     bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
                     #print("bbox",bbox)
                     for bbox  in bboxlist:
+                        print(bbox[0])
                         print("estimated fruit position",estimate_pose(self.camera_matrix, bbox, robot_pose))
                 else:
                     print("no saved map!")

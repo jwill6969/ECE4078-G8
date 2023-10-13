@@ -103,7 +103,7 @@ class EKF:
         # Construct measurement index list
         tags = [lm.tag for lm in measurements]
         for i in range(len(tags)):
-            if tags[i] > 10:
+            if tags[i] > 10 and tags[i]<= 0:
                 tags.remove(tags[i])
         idx_list = [self.taglist.index(tag) for tag in tags]
         if len(tags) != 0:
