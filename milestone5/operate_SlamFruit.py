@@ -26,7 +26,7 @@ sys.path.insert(0,"{}/network/".format(os.getcwd()))
 sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
 from network.scripts.detector import Detector
 from TargetPoseEst import merge_estimations,filtering,estimate_pose
-
+from SLAM_eval import parse_and_sort,transformation_allignment
 
 class Operate:
     def __init__(self, args):
@@ -269,7 +269,11 @@ class Operate:
                 if (self.saved_map is not True):
                     self.command['output'] = True
                     self.robot_pose_saved = self.ekf.robot.state
+                    print(self.robot_pose_saved)
                     self.saved_map = True
+                    _,aruco_pos = parse_and_sort()
+                    points = transformation_allignment(self.robot_pose_saved,self.end_robot_pose_true,aruco_pos)
+                    print("points",points)
                 else:
                     print("Map Already saved!")
             #CHECKER: take pic and calculate xy poses to check   
@@ -344,6 +348,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_data", action='store_true')
     parser.add_argument("--play_data", action='store_true')
     parser.add_argument("--ckpt", default='network/models/yolov8_model.pt')
+    #parser.add_argument("estimate", type=str, help="The estimate file name.")
     args, _ = parser.parse_known_args()
     
     pygame.font.init() 
