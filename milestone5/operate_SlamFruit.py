@@ -138,7 +138,7 @@ class Operate:
             # covert the colour back for display purpose
             self.network_vis = cv2.cvtColor(self.network_vis, cv2.COLOR_RGB2BGR)
 
-            # self.command['inference'] = False     # uncomment this if you do not want to continuously predict
+            self.command['inference'] = False     # uncomment this if you do not want to continuously predict
             self.file_output = (yolo_input_img, self.ekf)
 
             # self.notification = f'{len(self.detector_output)} target type(s) detected'
@@ -268,13 +268,10 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 if (self.saved_map is not True):
                     self.command['output'] = True
-                    self.robot_pose_saved = self.ekf.robot.state
-                    self.robot_pose_saved[2] = clamp_angle(self.robot_pose_saved[2])
                     self.saved_map = True
-                    print("robot_pose",self.robot_pose_saved)
-                    _,aruco_pos = parse_and_sort()
-                    points = transformation_allignment(self.robot_pose_saved,self.end_robot_pose_true,aruco_pos)
-                    print("points",points)
+                    points = evaluate_map(self.tag_ground_truth)
+                    self.map_dict = convertArrayToMap(points)
+                    print(self.map_dict)
                 else:
                     print("Map Already saved!")
             #CHECKER: take pic and calculate xy poses to check   
@@ -309,7 +306,8 @@ class Operate:
                         self.ekf_on = True
                         self.take_pic()
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
-                        self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
+                        if len(measurements) > 0:
+                            self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
                         
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
@@ -331,6 +329,7 @@ class Operate:
                 
             # save object detection outputs
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
+                self.command['inference'] = True
                 self.command['save_inference'] = True
                 yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
                 bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
