@@ -3,7 +3,6 @@ import ast
 import numpy as np
 import json
 import matplotlib.pyplot as plt
-import math
 
 def parse_groundtruth(fname : str) -> dict:
     with open(fname, 'r') as f:
@@ -32,7 +31,6 @@ def parse_user_map(fname : str) -> dict:
             aruco_dict[tag] = np.reshape([usr_dict["map"][0][i],usr_dict["map"][1][i]], (2,1))
     return aruco_dict
 
-
 def match_aruco_points(aruco0 : dict, aruco1 : dict):
     points0 = []
     points1 = []
@@ -46,6 +44,15 @@ def match_aruco_points(aruco0 : dict, aruco1 : dict):
         keys.append(key)
     return keys, np.hstack(points0), np.hstack(points1)
 
+def sort_aruco_list(aruco_dict):
+
+    true_dict = [1,2,3,4,5,6,7,8,9,10]
+    for key in aruco_dict:
+        if not key in true_dict:
+            continue
+    
+            
+    
 def solve_umeyama2d(points1, points2):
     # Solve the optimal transform such that
     # R(theta) * p1_i + t = p2_i
@@ -79,10 +86,10 @@ def solve_umeyama2d(points1, points2):
 def apply_transform(theta, x, points):
     # Apply an SE(2) transform to a set of 2D points
     assert(points.shape[0] == 2)
-    print("points", points)
+    print("points",points)
     c, s = np.cos(theta), np.sin(theta)
     R = np.array(((c, -s), (s, c)))
-
+    print("rotation",R @ points)
     points_transformed =  R @ points + x
     return points_transformed
 
@@ -109,64 +116,36 @@ def sorter(aruco_dict =  None):
             else:
                 keys.append(key)
                 sorted_array.append(sorted_dict[key])
-
-
-    return keys, sorted_array
-
-def getList(dict):
-    list = []
-    for key in dict.keys():
-        list.append(key)
-         
-    return list
-
+    return sorted_array
 def parse_and_sort():
     
-    aruco_coords = parse_user_map('lab_output/slam.txt')
-    keys, aruco_coords = sorter(aruco_coords)
-    return keys, aruco_coords
+    parsed_map = parse_user_map('lab_output/slam.txt')
+    aruco_coords = sorter(parsed_map)
+    return parsed_map, aruco_coords
 
-def transformation_allignment(robot_pose,true_robot_pose,points):
-    r_x = robot_pose[0][0]
-    r_y = robot_pose[1][0]
-    r_theta = robot_pose[2][0]
+def evaluate_map(tag_ground_truth):
+    us_aruco, aruco_coords =  parse_and_sort()
+    gt_aruco = tag_ground_truth
+    gt_aruco[0] = np.array([[    0],[   0]])
+    us_aruco[0] = np.array([[    0],[   0]])
+    taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
 
-    t_x = true_robot_pose[0][0]
-    t_y = true_robot_pose[1][0]
-    t_theta = true_robot_pose[2][0]
-    x_translate = r_x-t_x
-    y_translate = r_y-t_y
-    theta = r_theta - t_theta
-    print("x_translate",x_translate)
-    print("y_translate",y_translate)
-    print("theta",theta)
-    c, s = np.cos(-theta), np.sin(-theta)
-    R = np.array(((c, -s), (s, c)))
-    print("R",R)
+    idx = np.argsort(taglist)
+    taglist = np.array(taglist)[idx]
+    us_vec = us_vec[:,idx]
+    gt_vec = gt_vec[:, idx]
     
-    translate_xy = [r_x,r_y] - R @ np.array([t_x,t_y]).T
-    print("translate_xy",translate_xy)
-    translated = []
-    x_all = []
-    y_all = []
-    for i in range(len(points)):
-        x = points[i][0][0] - translate_xy[0]
-        y = points[i][1][0] - translate_xy[0]
-        # x = points[i][0][0] - x_translate
-        # y = points[i][1][0] - y_translate
-        coord = [[x],[y]]
-
-        translated_coord = R @ coord
-        x_all.append(translated_coord[0][0])
-        y_all.append(translated_coord[1][0])
-    translated.append(x_all)
-    translated.append(y_all) 
+    theta, x = solve_umeyama2d(us_vec, gt_vec)
+    pretransform = [[],[]]
+    for i in range(len(aruco_coords)):
+        x_cord = aruco_coords[i][0][0]
+        y_cord = aruco_coords[i][1][0]
+        pretransform[0].append(x_cord)
+        pretransform[1].append(y_cord)
     
-    
-    
+    us_vec_aligned = apply_transform(theta, x, np.array(pretransform))
 
-    return translated
-
+    return us_vec_aligned
 if __name__ == '__main__':
     import argparse
 
@@ -174,46 +153,52 @@ if __name__ == '__main__':
     parser.add_argument("groundtruth", type=str, help="The ground truth file name.")
     parser.add_argument("estimate", type=str, help="The estimate file name.")
     args = parser.parse_args()
-    _, aruco_coords = parse_and_sort()
-    robot_pose = [[   0.048832],[    -0.1326],[    -37.682]]
-    real_robot_pose = np.zeros((3, 1))
-    alligned = transformation_allignment(robot_pose,real_robot_pose,aruco_coords)
+
     gt_aruco = parse_groundtruth(args.groundtruth)
+    tag_ground_truth = {}
+    tag_ground_truth[4] = np.array([[   1.2],[   0]])
+    alligned = evaluate_map(tag_ground_truth)
     us_aruco = parse_user_map(args.estimate)
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
+    
     idx = np.argsort(taglist)
     taglist = np.array(taglist)[idx]
     us_vec = us_vec[:,idx]
     gt_vec = gt_vec[:, idx] 
-    theta, x = solve_umeyama2d(us_vec, gt_vec)
-    us_vec_aligned = apply_transform(theta, x, us_vec)
-    diff = gt_vec - us_vec_aligned
+    print("gt_vec",gt_vec)
+    rmse_aligned = compute_rmse(alligned, gt_vec)
     rmse = compute_rmse(us_vec, gt_vec)
-    rmse_aligned = compute_rmse(np.array(alligned), gt_vec)
-    rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
+    print(rmse_aligned)
+    print(rmse)
+    # theta, x = solve_umeyama2d(us_vec, gt_vec)
+    # us_vec_aligned = apply_transform(theta, x, us_vec)
     
-    print()
-    print("The following parameters optimally transform the estimated points to the ground truth.")
-    print("Rotation Angle: {}".format(theta))
-    print("Translation Vector: ({}, {})".format(x[0,0], x[1,0]))
+    diff = gt_vec - alligned
+    # rmse = compute_rmse(us_vec, gt_vec)
+    # rmse_aligned = compute_rmse(us_vec_aligned, gt_vec)
     
-    print()
-    print("Number of found markers: {}".format(len(taglist)))
-    print("RMSE before alignment: {}".format(rmse))
-    print("RMSE after alignment:  {}".format(rmse_aligned))
+    # print()
+    # print("The following parameters optimally transform the estimated points to the ground truth.")
+    # print("Rotation Angle: {}".format(theta))
+    # print("Translation Vector: ({}, {})".format(x[0,0], x[1,0]))
+    
+    # print()
+    # print("Number of found markers: {}".format(len(taglist)))
+    # print("RMSE before alignment: {}".format(rmse))
+    # print("RMSE after alignment:  {}".format(rmse_aligned))
     
     print()
     print('%s %7s %9s %7s %11s %9s %7s' % ('Marker', 'Real x', 'Pred x', 'Δx', 'Real y', 'Pred y', 'Δy'))
     print('-----------------------------------------------------------------')
     for i in range(len(taglist)):
-        print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], us_vec_aligned[0][i], diff[0][i], gt_vec[1][i], us_vec_aligned[1][i], diff[1][i]))
+        print('%3d %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f\n' % (taglist[i], gt_vec[0][i], alligned[0][i], diff[0][i], gt_vec[1][i], alligned[1][i], diff[1][i]))
     
     ax = plt.gca()
     ax.scatter(gt_vec[0,:], gt_vec[1,:], marker='o', color='C0', s=100)
-    ax.scatter(us_vec_aligned[0,:], us_vec_aligned[1,:], marker='x', color='C1', s=100)
+    ax.scatter(alligned[0,:], alligned[1,:], marker='x', color='C1', s=100)
     for i in range(len(taglist)):
         ax.text(gt_vec[0,i]+0.05, gt_vec[1,i]+0.05, taglist[i], color='C0', size=12)
-        ax.text(us_vec_aligned[0,i]+0.05, us_vec_aligned[1,i]+0.05, taglist[i], color='C1', size=12)
+        ax.text(alligned[0,i]+0.05, alligned[1,i]+0.05, taglist[i], color='C1', size=12)
     plt.title('Arena')
     plt.xlabel('X')
     plt.ylabel('Y')

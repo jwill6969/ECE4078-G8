@@ -6,7 +6,13 @@ class Marker:
         self.position = position
         self.tag = tag
         self.covariance = covariance
-
+    
+    def getPos(self):
+        return self.position
+    
+    def getTag(self):
+        return self.tag
+    
 class Drive:
     # Measurement of the robot wheel velocities
     def __init__(self, left_speed, right_speed, dt, left_cov = 1, right_cov = 1):

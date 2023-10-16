@@ -8,7 +8,7 @@ import time
 
 # import utility functions
 sys.path.insert(0, "{}/utility".format(os.getcwd()))
-from util.pibot import Alphabot # access the robot
+from util.pibotm2 import Alphabot # access the robot
 import util.DatasetHandler as dh # save/load functions
 import util.measure as measure # measurements
 import pygame # python package for GUI
@@ -17,7 +17,7 @@ from util.utilityFunctions import *
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
-from slam.ekf import EKF
+from slam.ekfm2 import EKF
 from slam.robot import Robot
 import slam.aruco_detector as aruco
 
@@ -248,30 +248,33 @@ class Operate:
         for event in pygame.event.get():
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.command['motion'] = [1,0]
+                self.command['motion'] = [1.5,0]
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.command['motion'] = [-1,0]  
+                self.command['motion'] = [-1.5,0]  
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0, 0.95]
+                self.command['motion'] = [0, 2]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0, -0.95]
+                self.command['motion'] = [0, -2]
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                print(get_robot_pose(self))
             # save SLAM map
+
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 if (self.saved_map is not True):
                     self.command['output'] = True
                     self.saved_map = True
                     points = evaluate_map(self.tag_ground_truth)
                     self.map_dict = convertArrayToMap(points)
-                    print(self.map_dict)
+                    #print("points",points)
                 else:
                     print("Map Already saved!")
             #CHECKER: take pic and calculate xy poses to check   
@@ -306,7 +309,9 @@ class Operate:
                         self.ekf_on = True
                         self.take_pic()
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
-                        self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
+                        if len(measurements) != 0:
+                            print(measurements[0].getTag())
+                            self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
                         
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
@@ -323,9 +328,6 @@ class Operate:
             # run object detector
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.command['inference'] = True
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
-                print(get_robot_pose(self))
-                
             # save object detection outputs
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
                 self.command['save_inference'] = True
@@ -335,12 +337,12 @@ class Operate:
                 if len(bboxlist) > 1:
                     array = []
                     for bbox  in bboxlist:
-                        value = estimate_pose(self.camera_matrix, bbox, get_robot_pose(self))
+                        value = estimate_pose(self.camera_matrix, bbox, robot_pose)
                         array.append(value)
                     coords = [array[0]['x'],array[0]['y']]
                     addFruitToMap(self.map_dict,coords,bboxlist[0][0])
                 else:
-                    value = estimate_pose(self.camera_matrix, bboxlist[0], get_robot_pose(self))
+                    value = estimate_pose(self.camera_matrix, bboxlist[0], robot_pose)
                     coords = [value['x'],value['y']]
                     addFruitToMap(self.map_dict,coords,bboxlist[0][0])
             # quit

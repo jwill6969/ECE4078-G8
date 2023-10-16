@@ -9,6 +9,22 @@ from util.pibot import Alphabot
 import util.measure as measure
 from util.utilityFunctions import *
 
+def convertArrayToMap(array):
+    map_dict = {}
+
+    for i in range(len(array)):
+        map_dict[f'aruco{i+1}_0'] = {'x': array[0][i],'y': array[1][i]}
+    return map_dict
+
+
+def addFruitToMap(map_dict,coords,label):
+
+    map_dict[f'{label}_0'] = {'x': coords[0],'y': coords[1]}
+    return map_dict
+
+
+
+
 def clamp_angle(rad_angle=0, min_value=-np.pi, max_value=np.pi):
         """
         Restrict angle to the range [min, max]
@@ -61,6 +77,7 @@ def turn_to_point(waypoint, robot_pose, wheel_vel):
     return turn_time,cur_wheel_speed
 
 def get_robot_pose(operate):
+    operate.ekf.robot.state[2] = clamp_angle(operate.ekf.robot.state[2])
     return operate.ekf.robot.state
 
 
