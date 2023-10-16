@@ -268,10 +268,13 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 if (self.saved_map is not True):
                     self.command['output'] = True
+                    self.robot_pose_saved = self.ekf.robot.state
+                    self.robot_pose_saved[2] = clamp_angle(self.robot_pose_saved[2])
                     self.saved_map = True
-                    points = evaluate_map(self.tag_ground_truth)
-                    self.map_dict = convertArrayToMap(points)
-                    print(self.map_dict)
+                    print("robot_pose",self.robot_pose_saved)
+                    _,aruco_pos = parse_and_sort()
+                    points = transformation_allignment(self.robot_pose_saved,self.end_robot_pose_true,aruco_pos)
+                    print("points",points)
                 else:
                     print("Map Already saved!")
             #CHECKER: take pic and calculate xy poses to check   
