@@ -310,7 +310,7 @@ class Operate:
                         self.take_pic()
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
                         self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
-                        
+                        print(self.tag_ground_truth)
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
                 elif n_observed_markers < 3:
