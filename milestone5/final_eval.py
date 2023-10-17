@@ -157,7 +157,7 @@ if __name__ == '__main__':
     gt_aruco = parse_groundtruth(args.groundtruth)
     tag_ground_truth = {}
     ###########################################################
-    tag_ground_truth[4] = np.array([[   1.1636],[   0.0045841]])
+    tag_ground_truth[4] = np.array([[    1.1567],[   -0.019658]])
     ###########################################################
     alligned = evaluate_map(tag_ground_truth)
     us_aruco = parse_user_map(args.estimate)

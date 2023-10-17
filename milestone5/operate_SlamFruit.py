@@ -77,8 +77,14 @@ class Operate:
         
         # adding map saving and camera matrix
         self.saved_map = False
+        self.scale = 0
+        self.baseline = 0
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         fileK = f'{self.script_dir}/calibration/param/intrinsic.txt'
+        fileS = f"{self.script_dir}/calibration/param/scale.txt"
+        self.scale = np.loadtxt(fileS, delimiter=',')
+        fileB = f"{self.script_dir}/calibration/param/baseline.txt"  
+        self.baseline = np.loadtxt(fileB, delimiter=',')
         self.camera_matrix = np.loadtxt(fileK, delimiter=',')
         self.tag_ground_truth = {}
         self.map_dict = {}
@@ -90,6 +96,12 @@ class Operate:
             self.detector = Detector(args.ckpt)
             self.network_vis = np.ones((240, 320,3))* 100
         self.bg = pygame.image.load('pics/gui_mask.jpg')
+
+    def set_scale_baseline(self,datadir):
+        fileS = "{}scale.txt".format(datadir)
+        self.scale = np.loadtxt(fileS, delimiter=',')
+        fileB = "{}baseline.txt".format(datadir)  
+        self.baseline = np.loadtxt(fileB, delimiter=',')
 
     # wheel control
     def control(self):       
@@ -255,10 +267,19 @@ class Operate:
                 self.command['motion'] = [-1,0]  
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0, 0.95]
+                turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
+                
+                lv, rv = operate.pibot.set_velocity([0, 0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
+                drive_meas = measure.Drive(1.5*lv, 1.5*rv, np.abs(turn_time))
+                print("lvrv",lv,rv)
+                self.update_slam(drive_meas)
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0, -0.95]
+                turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
+                lv, rv = operate.pibot.set_velocity([0, -0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
+                print("lvrv",lv,rv)
+                drive_meas = measure.Drive(1.5*lv, 1.5*rv, np.abs(turn_time))
+                self.update_slam(drive_meas)
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
@@ -405,7 +426,6 @@ if __name__ == "__main__":
             counter += 2
 
     operate = Operate(args)
-
     # get camera calibration files
 
 

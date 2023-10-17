@@ -18,7 +18,7 @@ from util.utilityFunctions import *
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
 from slam.ekfm2 import EKF
-from slam.robot import Robot
+from slam.robotm2 import Robot
 import slam.aruco_detector as aruco
 
 # import CV components
@@ -82,6 +82,7 @@ class Operate:
         self.camera_matrix = np.loadtxt(fileK, delimiter=',')
         self.tag_ground_truth = {}
         self.map_dict = {}
+        self.fruit_dict= {}
         if args.ckpt == "":
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
@@ -138,7 +139,7 @@ class Operate:
             # covert the colour back for display purpose
             self.network_vis = cv2.cvtColor(self.network_vis, cv2.COLOR_RGB2BGR)
 
-            # self.command['inference'] = False     # uncomment this if you do not want to continuously predict
+            self.command['inference'] = False     # uncomment this if you do not want to continuously predict
             self.file_output = (yolo_input_img, self.ekf)
 
             # self.notification = f'{len(self.detector_output)} target type(s) detected'
@@ -248,33 +249,30 @@ class Operate:
         for event in pygame.event.get():
             # drive forward
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                self.command['motion'] = [1.5,0]
+                self.command['motion'] = [1,0]
             # drive backward
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                self.command['motion'] = [-1.5,0]  
+                self.command['motion'] = [-1,0]  
             # turn left
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-                self.command['motion'] = [0, 2]
+                self.command['motion'] = [0, 1]
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-                self.command['motion'] = [0, -2]
+                self.command['motion'] = [0, -1]
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
             # save image
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_i:
                 self.command['save_image'] = True
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
-                print(get_robot_pose(self))
             # save SLAM map
-
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                 if (self.saved_map is not True):
                     self.command['output'] = True
                     self.saved_map = True
                     points = evaluate_map(self.tag_ground_truth)
                     self.map_dict = convertArrayToMap(points)
-                    #print("points",points)
+                    print(self.map_dict)
                 else:
                     print("Map Already saved!")
             #CHECKER: take pic and calculate xy poses to check   
@@ -309,10 +307,9 @@ class Operate:
                         self.ekf_on = True
                         self.take_pic()
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
-                        if len(measurements) != 0:
-                            print(measurements[0].getTag())
+                        if len(measurements) > 0:
                             self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
-                        
+                            print("SAVE THIS POSITION OF THE ARUCO",self.tag_ground_truth)
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
                 elif n_observed_markers < 3:
@@ -328,29 +325,32 @@ class Operate:
             # run object detector
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.command['inference'] = True
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                print(get_robot_pose(self))
+                
             # save object detection outputs
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
+                self.command['inference'] = True
                 self.command['save_inference'] = True
                 yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
                 bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
                  # bbox [label,[x,y,width,height]]
-                if len(bboxlist) > 1:
-                    array = []
-                    for bbox  in bboxlist:
-                        value = estimate_pose(self.camera_matrix, bbox, robot_pose)
-                        array.append(value)
-                    coords = [array[0]['x'],array[0]['y']]
-                    addFruitToMap(self.map_dict,coords,bboxlist[0][0])
-                else:
-                    value = estimate_pose(self.camera_matrix, bboxlist[0], robot_pose)
+                for bbox in bboxlist:
+                    value = estimate_pose(self.camera_matrix, bbox, get_robot_pose(self))
                     coords = [value['x'],value['y']]
-                    addFruitToMap(self.map_dict,coords,bboxlist[0][0])
+                    self.fruit_dict = addFruitToDict(self.fruit_dict,coords,bbox[0])
+                    print("this is fruit dict",self.fruit_dict)
             # quit
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                print("fruit_dict",self.fruit_dict)
+                print("map_dict",self.map_dict)
+                self.fruit_dict = merge_estimations(self.fruit_dict)
+                final = {**self.map_dict, **self.fruit_dict}
+                
                 with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
-                    json.dump(self.map_dict, fo, indent=4)
+                    json.dump(final, fo, indent=4)
                  # convert map_dict to file
                 self.quit = True
             else:
