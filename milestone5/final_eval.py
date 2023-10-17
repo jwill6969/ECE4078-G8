@@ -156,7 +156,9 @@ if __name__ == '__main__':
 
     gt_aruco = parse_groundtruth(args.groundtruth)
     tag_ground_truth = {}
-    tag_ground_truth[4] = np.array([[   1.1559],[   0.0081216]])
+    ###########################################################
+    tag_ground_truth[4] = np.array([[   1.1636],[   0.0045841]])
+    ###########################################################
     alligned = evaluate_map(tag_ground_truth)
     us_aruco = parse_user_map(args.estimate)
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
@@ -165,11 +167,11 @@ if __name__ == '__main__':
     taglist = np.array(taglist)[idx]
     us_vec = us_vec[:,idx]
     gt_vec = gt_vec[:, idx] 
-    print("gt_vec",gt_vec)
     rmse_aligned = compute_rmse(alligned, gt_vec)
     rmse = compute_rmse(us_vec, gt_vec)
-    print(rmse_aligned)
-    print(rmse)
+    print("this is before allignment",rmse)
+    print("this is after allignment",rmse_aligned)
+    
     # theta, x = solve_umeyama2d(us_vec, gt_vec)
     # us_vec_aligned = apply_transform(theta, x, us_vec)
     

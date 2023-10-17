@@ -18,11 +18,11 @@ def convertArrayToMap(array):
 
 def addFruitToDict(fruit_dict,coords,label):
     true_dict = {
-            'red apple': 0,
-            'green apple': 0,
-            'mango': 0,
-            'orange': 0,
-            'capsicum': 0
+            'red apple': 1,
+            'green apple': 1,
+            'mango': 1,
+            'orange': 1,
+            'capsicum': 1
     }
     for est in fruit_dict:
         if est.__contains__("red apple"):

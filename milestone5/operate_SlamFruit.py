@@ -309,7 +309,7 @@ class Operate:
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
                         if len(measurements) > 0:
                             self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
-                            print(self.tag_ground_truth)
+                            print("SAVE THIS POSITION OF THE ARUCO",self.tag_ground_truth)
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
                 elif n_observed_markers < 3:
@@ -338,13 +338,17 @@ class Operate:
                 for bbox in bboxlist:
                     value = estimate_pose(self.camera_matrix, bbox, get_robot_pose(self))
                     coords = [value['x'],value['y']]
-                    addFruitToDict(self.map_dict,coords,bbox[0])
+                    self.fruit_dict = addFruitToDict(self.fruit_dict,coords,bbox[0])
+                    print("this is fruit dict",self.fruit_dict)
             # quit
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                print("fruit_dict",self.fruit_dict)
+                print("map_dict",self.map_dict)
                 self.fruit_dict = merge_estimations(self.fruit_dict)
                 final = {**self.map_dict, **self.fruit_dict}
+                
                 with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
                     json.dump(final, fo, indent=4)
                  # convert map_dict to file
