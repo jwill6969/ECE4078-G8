@@ -11,16 +11,33 @@ from util.utilityFunctions import *
 
 def convertArrayToMap(array):
     map_dict = {}
-
-    for i in range(len(array)):
+    for i in range(len(array[0])):
         map_dict[f'aruco{i+1}_0'] = {'x': array[0][i],'y': array[1][i]}
     return map_dict
 
 
-def addFruitToMap(map_dict,coords,label):
-
-    map_dict[f'{label}_0'] = {'x': coords[0],'y': coords[1]}
-    return map_dict
+def addFruitToDict(fruit_dict,coords,label):
+    true_dict = {
+            'red apple': 0,
+            'green apple': 0,
+            'mango': 0,
+            'orange': 0,
+            'capsicum': 0
+    }
+    for est in fruit_dict:
+        if est.__contains__("red apple"):
+            true_dict['red apple'] += 1
+        elif est.__contains__("green apple"):
+            true_dict['green apple'] += 1
+        elif est.__contains__("mango"):
+            true_dict['mango'] += 1
+        elif est.__contains__("capsicum"):
+            true_dict['capsicum'] += 1
+        elif est.__contains__("orange"):
+            true_dict['orange'] += 1
+    
+    fruit_dict[f'{label}_{true_dict[label]-1}'] = {'x': coords[0],'y': coords[1]}
+    return fruit_dict
 
 
 

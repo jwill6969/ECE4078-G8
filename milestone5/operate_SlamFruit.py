@@ -82,6 +82,7 @@ class Operate:
         self.camera_matrix = np.loadtxt(fileK, delimiter=',')
         self.tag_ground_truth = {}
         self.map_dict = {}
+        self.fruit_dict= {}
         if args.ckpt == "":
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
@@ -308,7 +309,7 @@ class Operate:
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
                         if len(measurements) > 0:
                             self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
-                        
+                            print(self.tag_ground_truth)
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
                 elif n_observed_markers < 3:
@@ -334,23 +335,18 @@ class Operate:
                 yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
                 bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
                  # bbox [label,[x,y,width,height]]
-                if len(bboxlist) > 1:
-                    array = []
-                    for bbox  in bboxlist:
-                        value = estimate_pose(self.camera_matrix, bbox, get_robot_pose(self))
-                        array.append(value)
-                    coords = [array[0]['x'],array[0]['y']]
-                    addFruitToMap(self.map_dict,coords,bboxlist[0][0])
-                else:
-                    value = estimate_pose(self.camera_matrix, bboxlist[0], get_robot_pose(self))
+                for bbox in bboxlist:
+                    value = estimate_pose(self.camera_matrix, bbox, get_robot_pose(self))
                     coords = [value['x'],value['y']]
-                    addFruitToMap(self.map_dict,coords,bboxlist[0][0])
+                    addFruitToDict(self.map_dict,coords,bbox[0])
             # quit
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.fruit_dict = merge_estimations(self.fruit_dict)
+                final = {**self.map_dict, **self.fruit_dict}
                 with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
-                    json.dump(self.map_dict, fo, indent=4)
+                    json.dump(final, fo, indent=4)
                  # convert map_dict to file
                 self.quit = True
             else:

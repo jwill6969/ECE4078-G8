@@ -86,10 +86,10 @@ def solve_umeyama2d(points1, points2):
 def apply_transform(theta, x, points):
     # Apply an SE(2) transform to a set of 2D points
     assert(points.shape[0] == 2)
-    print("points",points)
+    
     c, s = np.cos(theta), np.sin(theta)
     R = np.array(((c, -s), (s, c)))
-    print("rotation",R @ points)
+    
     points_transformed =  R @ points + x
     return points_transformed
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     gt_aruco = parse_groundtruth(args.groundtruth)
     tag_ground_truth = {}
-    tag_ground_truth[4] = np.array([[   1.2],[   0]])
+    tag_ground_truth[4] = np.array([[   1.1559],[   0.0081216]])
     alligned = evaluate_map(tag_ground_truth)
     us_aruco = parse_user_map(args.estimate)
     taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
