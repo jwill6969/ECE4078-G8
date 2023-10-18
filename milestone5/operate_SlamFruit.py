@@ -271,13 +271,13 @@ class Operate:
                 
                 lv, rv = operate.pibot.set_velocity([0, 0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
                 drive_meas = measure.Drive(1.5*lv, 1.5*rv, np.abs(turn_time))
-                print("lvrv",lv,rv)
+                
                 self.update_slam(drive_meas)
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
                 lv, rv = operate.pibot.set_velocity([0, -0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
-                print("lvrv",lv,rv)
+                
                 drive_meas = measure.Drive(1.5*lv, 1.5*rv, np.abs(turn_time))
                 self.update_slam(drive_meas)
             # stop
@@ -296,20 +296,30 @@ class Operate:
                     print(self.map_dict)
                 else:
                     print("Map Already saved!")
-            #CHECKER: take pic and calculate xy poses to check   
+            #CHECKER: take pic and calculate xy poses to check 
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_o:
+                robot_pose = get_robot_pose(self)
+                self.take_pic()
+                yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
+                bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
+                for bbox  in bboxlist:
+                    # print("estimated fruit position",estimate_pose(self.camera_matrix, bbox, robot_pose))
+                    point = estimate_pose(self.camera_matrix, bbox, robot_pose)
+                    coords = [point['x'],point['y']]
+                    ans = dist_between_points(coords,robot_pose[:-1])
+                    if ans < 0.8:
+                        print("fruit added:",bbox[0],"distance",ans,point)
+                        self.fruit_dict = addFruitToDict(self.fruit_dict,coords,bbox[0])
+                    else:
+                        print("filtered")
+
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
-                if (self.saved_map):
-                    # self.command['save_image'] = True
-                    robot_pose = self.ekf.robot.state
+                    robot_pose = get_robot_pose(self)
                     print("Current Robot Pose:",robot_pose)
-                    # take pic with only 1 fruit at a time
-                    self.take_pic()
                     yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
                     bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
                     for bbox  in bboxlist:
                         print("estimated fruit position",estimate_pose(self.camera_matrix, bbox, robot_pose))
-                else:
-                    print("no saved map!")
             # reset SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 if self.double_reset_comfirm == 0:
@@ -348,28 +358,15 @@ class Operate:
                 self.command['inference'] = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 print(get_robot_pose(self))
-                
-            # save object detection outputs
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
-                self.command['inference'] = True
-                self.command['save_inference'] = True
-                yolo_input_img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
-                bboxlist, self.network_vis = self.detector.detect_single_image(yolo_input_img)
-                 # bbox [label,[x,y,width,height]]
-                for bbox in bboxlist:
-                    value = estimate_pose(self.camera_matrix, bbox, get_robot_pose(self))
-                    coords = [value['x'],value['y']]
-                    self.fruit_dict = addFruitToDict(self.fruit_dict,coords,bbox[0])
-                    print("this is fruit dict",self.fruit_dict)
-            # quit
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 print("fruit_dict",self.fruit_dict)
                 print("map_dict",self.map_dict)
                 self.fruit_dict = merge_estimations(self.fruit_dict)
+                with open(f'{self.script_dir}/targets.txt', 'w') as fo:
+                    json.dump(self.fruit_dict, fo, indent=4)
                 final = {**self.map_dict, **self.fruit_dict}
-                
                 with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
                     json.dump(final, fo, indent=4)
                  # convert map_dict to file

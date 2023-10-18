@@ -128,41 +128,41 @@ def merge_estimations(target_pose_dict):
         else:
             orange_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
 
-    
-    print(greenapple_est)
-    print(orange_est)
-    print(mango_est)
-    print(capsicum_est)
-    redapple_est = [np.average(filtering(redapple_est),axis=0)]     
-    greenapple_est = [np.average(filtering(greenapple_est),axis=0)] 
-    orange_est = [np.average(filtering(orange_est),axis=0)]
-    mango_est = [np.average(filtering(mango_est),axis=0)]
-    capsicum_est = [np.average(filtering(capsicum_est),axis=0)]
+    if len(redapple_est) > 1:
+        redapple_est = [np.average(filtering(redapple_est),axis=0)]  
+    if len(greenapple_est) > 1:      
+        greenapple_est = [np.average(filtering(greenapple_est),axis=0)] 
+    if len(orange_est) > 1:
+        orange_est = [np.average(filtering(orange_est),axis=0)]
+    if len(mango_est) > 1: 
+        mango_est = [np.average(filtering(mango_est),axis=0)]
+    if len(mango_est) > 1:
+        capsicum_est = [np.average(filtering(capsicum_est),axis=0)]
 
     
 
-
-    if redapple_est != [] and np.isnan(np.all(redapple_est)) == False:
+    print()
+    if len(redapple_est) != 0:
         target_est["redapple_0"] = {
             "x":redapple_est[0][0],
             "y":redapple_est[0][1]
         }
-    if greenapple_est != [] and np.isnan(np.all(greenapple_est)) == False:
+    if len(greenapple_est) != 0:
         target_est["greenapple_0"] = {
             "x":greenapple_est[0][0],
             "y":greenapple_est[0][1]
         }
-    if orange_est != [] and np.isnan(np.all(orange_est)) == False:
+    if len(orange_est) != 0:
         target_est["orange_0"] = {
             "x":orange_est[0][0],
             "y":orange_est[0][1]
         }
-    if mango_est != [] and np.isnan(np.all(mango_est)) == False:
+    if len(mango_est) != 0:
         target_est["mango_0"] = {
             "x":mango_est[0][0],
             "y":mango_est[0][1]
         }
-    if capsicum_est != [] and np.isnan(np.all(capsicum_est)) == False:
+    if len(capsicum_est) != 0:
         target_est["capsicum_0"] = {
             "x":capsicum_est[0][0],
             "y":capsicum_est[0][1]

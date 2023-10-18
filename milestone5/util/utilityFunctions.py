@@ -9,6 +9,9 @@ from util.pibot import Alphabot
 import util.measure as measure
 from util.utilityFunctions import *
 
+def dist_between_points(point1,point2):
+    return np.sqrt((point1[0]-point2[0])**2+(point1[1]-point2[1])**2)
+
 def convertArrayToMap(array):
     map_dict = {}
     for i in range(len(array[0])):
