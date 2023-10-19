@@ -26,7 +26,7 @@ sys.path.insert(0,"{}/network/".format(os.getcwd()))
 sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
 from network.scripts.detector import Detector
 from TargetPoseEst import merge_estimations,filtering,estimate_pose
-from final_eval import parse_and_sort,evaluate_map
+from final_eval import parse_and_sort,evaluate_map,evaluate_map_00
 
 class Operate:
     def __init__(self, args):
@@ -68,6 +68,7 @@ class Operate:
         self.notification = 'Press ENTER to start SLAM'
         # a 5min timer
         self.count_down = 300
+        self.endpos = []
         self.start_time = time.time()
         self.control_clock = time.time()
         # initialise images
@@ -270,16 +271,18 @@ class Operate:
                 turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
                 
                 lv, rv = operate.pibot.set_velocity([0, 0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
-                drive_meas = measure.Drive(1.5*lv, 1.5*rv, np.abs(turn_time))
+                drive_meas = measure.Drive(1.7*lv, 1.7*rv, np.abs(turn_time))
                 
                 self.update_slam(drive_meas)
+                #print(get_robot_pose(self)[2]*180/np.pi)
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
                 lv, rv = operate.pibot.set_velocity([0, -0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
                 
-                drive_meas = measure.Drive(1.5*lv, 1.5*rv, np.abs(turn_time))
+                drive_meas = measure.Drive(1.7*lv, 1.7*rv, np.abs(turn_time))
                 self.update_slam(drive_meas)
+                #print(get_robot_pose(self)[2]*180/np.pi)
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
@@ -291,7 +294,9 @@ class Operate:
                 if (self.saved_map is not True):
                     self.command['output'] = True
                     self.saved_map = True
-                    points = evaluate_map(self.tag_ground_truth)
+                    #points = evaluate_map(self.tag_ground_truth)
+                    self.endpos = get_robot_pose(self)[:-1]
+                    points = evaluate_map_00(self.tag_ground_truth,self.endpos)
                     self.map_dict = convertArrayToMap(points)
                     print(self.map_dict)
                 else:
