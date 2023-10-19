@@ -209,7 +209,7 @@ if __name__ == "__main__":
     operate = Operate(args)
     operate.ekf = operate.init_ekf(args.calib_dir, args.ip)
     # read in the true map
-    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("M4_true_map.txt")
+    fruits_list, fruits_true_pos, aruco_true_pos = read_true_map("final_map.txt")
     search_list = read_search_list()
     waypoints = print_target_fruits_pos(search_list, fruits_list, fruits_true_pos,output=True)
 

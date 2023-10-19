@@ -193,11 +193,10 @@ def print_target_fruits_pos(search_list, fruit_list, fruit_true_pos,output = Fal
     @param fruit_true_pos: positions of the target fruits
     """
 
-    print("Search order:")
     waypoints = []
     n_fruit = 1
     for fruit in search_list:
-        for i in range(3):
+        for i in range(len(fruit_list)):
             if fruit == fruit_list[i]:
                 print('{}) {} at [{}, {}]'.format(n_fruit,
                                                   fruit,

@@ -123,6 +123,30 @@ def parse_and_sort():
     aruco_coords = sorter(parsed_map)
     return parsed_map, aruco_coords
 
+def evaluate_map_00(tag_ground_truth,endpos):
+    us_aruco, aruco_coords =  parse_and_sort()
+    gt_aruco = tag_ground_truth
+    gt_aruco[0] = np.array([[    0],[   0]])
+    us_aruco[0] = np.array(endpos)
+    taglist, us_vec, gt_vec = match_aruco_points(us_aruco, gt_aruco)
+
+    idx = np.argsort(taglist)
+    taglist = np.array(taglist)[idx]
+    us_vec = us_vec[:,idx]
+    gt_vec = gt_vec[:, idx]
+    
+    theta, x = solve_umeyama2d(us_vec, gt_vec)
+    pretransform = [[],[]]
+    for i in range(len(aruco_coords)):
+        x_cord = aruco_coords[i][0][0]
+        y_cord = aruco_coords[i][1][0]
+        pretransform[0].append(x_cord)
+        pretransform[1].append(y_cord)
+    
+    us_vec_aligned = apply_transform(theta, x, np.array(pretransform))
+
+    return us_vec_aligned
+
 def evaluate_map(tag_ground_truth):
     us_aruco, aruco_coords =  parse_and_sort()
     gt_aruco = tag_ground_truth
@@ -157,7 +181,7 @@ if __name__ == '__main__':
     gt_aruco = parse_groundtruth(args.groundtruth)
     tag_ground_truth = {}
     ###########################################################
-    tag_ground_truth[1] = np.array([[    1.161],[   0.13886]])
+    tag_ground_truth[1] = np.array([[     1.179],[  0.030768]])
     ###########################################################
     alligned = evaluate_map(tag_ground_truth)
     us_aruco = parse_user_map(args.estimate)
