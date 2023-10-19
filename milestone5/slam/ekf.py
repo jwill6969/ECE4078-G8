@@ -137,7 +137,17 @@ class EKF:
         Q = np.zeros((n,n))
         Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)+ 0.001*np.eye(3) # Testing changing 0.01 to 0.001
         return Q
-
+    
+    # def predict_covariance(self, raw_drive_meas):
+    #     n = self.number_landmarks()*2 + 3
+    #     Q = np.zeros((n,n))
+    #     Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) + 0.01*np.eye(3)
+    #     if raw_drive_meas.left_speed == 0 and raw_drive_meas.right_speed == 0:
+    #         Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas)
+    #     else:
+    #         Q[0:3,0:3] = self.robot.covariance_drive(raw_drive_meas) + 0.01*np.eye(3)
+    #     return Q
+    
     def add_landmarks(self, measurements):
         if not measurements:
             return

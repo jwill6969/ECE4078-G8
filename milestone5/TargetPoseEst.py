@@ -125,7 +125,7 @@ def merge_estimations(target_pose_dict):
             mango_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
         elif est.__contains__("capsicum"):
             capsicum_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
-        else:
+        elif est.__contains__("orange"):
             orange_est.append([target_pose_dict[est]["x"], target_pose_dict[est]["y"]])
 
     if len(redapple_est) > 1:
