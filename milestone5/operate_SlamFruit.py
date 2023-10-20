@@ -77,7 +77,7 @@ class Operate:
         self.detector_output = np.zeros([240,320], dtype=np.uint8)
         
         # adding map saving and camera matrix
-        self.saved_map = False
+        self.stopUpdate = False
         self.scale = 0
         self.baseline = 0
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -271,18 +271,18 @@ class Operate:
                 turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
                 
                 lv, rv = operate.pibot.set_velocity([0, 0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
-                drive_meas = measure.Drive(1.7*lv, 1.7*rv, np.abs(turn_time))
+                drive_meas = measure.Drive(lv, rv, 1.6*np.abs(turn_time))
                 
                 self.update_slam(drive_meas)
-                #print(get_robot_pose(self)[2]*180/np.pi)
+                # print(get_robot_pose(self)[2]*180/np.pi)
             # drive right
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
                 turn_time = self.baseline*(np.pi/6)/(2*self.scale*40)
                 lv, rv = operate.pibot.set_velocity([0, -0.75],tick=20, turning_tick=40, time=np.abs(turn_time))
                 
-                drive_meas = measure.Drive(1.7*lv, 1.7*rv, np.abs(turn_time))
+                drive_meas = measure.Drive(lv, rv, 1.7*np.abs(turn_time))
                 self.update_slam(drive_meas)
-                #print(get_robot_pose(self)[2]*180/np.pi)
+                # print(get_robot_pose(self)[2]*180/np.pi)
             # stop
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 self.command['motion'] = [0, 0]
@@ -291,7 +291,6 @@ class Operate:
                 self.command['save_image'] = True
             # save SLAM map
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                if (self.saved_map is not True):
                     self.command['output'] = True
                     self.saved_map = True
                     #points = evaluate_map(self.tag_ground_truth)
@@ -299,8 +298,12 @@ class Operate:
                     points = evaluate_map_00(self.tag_ground_truth,self.endpos)
                     self.map_dict = convertArrayToMap(points)
                     print(self.map_dict)
-                else:
-                    print("Map Already saved!")
+                    if (self.stopUpdate is True):
+                        self.ekf.reset()
+                        addAruco(points)
+                        print("hi")
+                        
+                    
             #CHECKER: take pic and calculate xy poses to check 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_o:
                 robot_pose = get_robot_pose(self)
@@ -366,14 +369,15 @@ class Operate:
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                print("fruit_dict",self.fruit_dict)
-                print("map_dict",self.map_dict)
-                self.fruit_dict = merge_estimations(self.fruit_dict)
-                with open(f'{self.script_dir}/targets.txt', 'w') as fo:
-                    json.dump(self.fruit_dict, fo, indent=4)
-                final = {**self.map_dict, **self.fruit_dict}
-                with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
-                    json.dump(final, fo, indent=4)
+                if self.map_dict != {}:
+                    print("fruit_dict",self.fruit_dict)
+                    print("map_dict",self.map_dict)
+                    self.fruit_dict = merge_estimations(self.fruit_dict)
+                    with open(f'{self.script_dir}/targets.txt', 'w') as fo:
+                        json.dump(self.fruit_dict, fo, indent=4)
+                    final = {**self.map_dict, **self.fruit_dict}
+                    with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
+                        json.dump(final, fo, indent=4)
                  # convert map_dict to file
                 self.quit = True
             else:
