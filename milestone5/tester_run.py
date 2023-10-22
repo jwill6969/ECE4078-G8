@@ -140,10 +140,19 @@ def localise():
     print(get_robot_pose(operate))
     return
 
+def obstacle_detection(curr_pose,current_waypoint,operate):
+    operate.take_pic()
+    measurements,_ = operate.aruco_det.detect_marker_positions(operate.img)
+    # measurement in measurements is a marker obj
+    if len(measurements)>0:
+        print("aruco detected in path")
+        for lms in measurements:
+            test = 0
+    return
 
 def PATH(waypoint):
     # PATH should go to all the waypoints in the list
-    fruit_list, fruit_true_pos, aruco_true_pos = read_true_map(args.truemap)
+    fruit_list, fruit_true_pos, aruco_true_pos = read_true_map("M4_true_map.txt")
     
     start = [get_robot_pose(operate)[0][0],get_robot_pose(operate)[1][0]]
     goal = np.array(waypoint)

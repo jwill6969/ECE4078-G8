@@ -14,6 +14,7 @@ import util.measure as measure # measurements
 import pygame # python package for GUI
 import shutil # python package for file operations
 from util.utilityFunctions import *
+from util.TargetPoseEst import merge_estimations,filtering,estimate_pose
 
 # import SLAM components you developed in M2
 sys.path.insert(0, "{}/slam".format(os.getcwd()))
@@ -25,7 +26,7 @@ import slam.aruco_detector as aruco
 sys.path.insert(0,"{}/network/".format(os.getcwd()))
 sys.path.insert(0,"{}/network/scripts".format(os.getcwd()))
 from network.scripts.detector import Detector
-from TargetPoseEst import merge_estimations,filtering,estimate_pose
+
 from final_eval import parse_and_sort,evaluate_map,evaluate_map_00
 
 class Operate:
@@ -90,6 +91,8 @@ class Operate:
         self.tag_ground_truth = {}
         self.map_dict = {}
         self.fruit_dict= {}
+        self.map_dict_unaligned = {}
+        self.translation = []
         if args.ckpt == "":
             self.detector = None
             self.network_vis = cv2.imread('pics/8bit/detector_splash.png')
@@ -293,14 +296,24 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_s:
                     self.command['output'] = True
                     self.saved_map = True
-                    #points = evaluate_map(self.tag_ground_truth)
+                    _, unaligned_points_arranged = parse_and_sort()
+                    arranged = convert_shape(unaligned_points_arranged)
+                    self.map_dict_unaligned = convertArrayToMap(arranged)
+                    points = evaluate_map(self.tag_ground_truth)
+                    endpos_true = [[0],[0]]
                     self.endpos = get_robot_pose(self)[:-1]
-                    points = evaluate_map_00(self.tag_ground_truth,self.endpos)
+                    if dist_between_points(endpos_true,self.endpos) > 0.1:
+                        print("ERROR BETWEEN 0,0",dist_between_points(endpos_true,self.endpos))
+                        self.translation = calculate_translation(true_pose=endpos_true,robot_pose=self.endpos)
+                        points = translate_coordinates(points = points,translation=self.translation)
+                    # points = evaluate_map_00(self.tag_ground_truth,self.endpos)
                     self.map_dict = convertArrayToMap(points)
-                    print(self.map_dict)
+                    printCompare(aligned=points,unaligned=arranged)
                     if (self.stopUpdate is True):
+                        theta = robot_pose(self)[2] # save theta value add to slam after reset
                         self.ekf.reset()
                         addAruco(points)
+                        self.ekf.robot.state[2] = theta
                         print("hi")
                         
                     
@@ -313,13 +326,14 @@ class Operate:
                 for bbox  in bboxlist:
                     # print("estimated fruit position",estimate_pose(self.camera_matrix, bbox, robot_pose))
                     point = estimate_pose(self.camera_matrix, bbox, robot_pose)
+                    # if self.translation != []:
                     coords = [point['x'],point['y']]
                     ans = dist_between_points(coords,robot_pose[:-1])
                     if ans < 0.8:
-                        print("fruit added:",bbox[0],"distance",ans,point)
+                        print("fruit added:",bbox[0],point)
                         self.fruit_dict = addFruitToDict(self.fruit_dict,coords,bbox[0])
                     else:
-                        print("filtered")
+                        print("FILTERED",bbox[0])
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_c:
                     robot_pose = get_robot_pose(self)
@@ -348,7 +362,7 @@ class Operate:
                         measurements,_ = self.aruco_det.detect_marker_positions(self.img)
                         if len(measurements) > 0:
                             self.tag_ground_truth[measurements[0].getTag()] = measurements[0].getPos()
-                            print("SAVE THIS POSITION OF THE ARUCO",self.tag_ground_truth)
+                            # print("SAVE THIS POSITION OF THE ARUCO",self.tag_ground_truth)
                     else:
                         self.notification = '> 2 landmarks is required for pausing'
                 elif n_observed_markers < 3:
@@ -365,7 +379,8 @@ class Operate:
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
                 self.command['inference'] = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_q:
-                print(get_robot_pose(self))
+                coords = get_robot_pose(self)
+                print("x:",coords[0][0],"  y:",coords[1][0],"  t:",coords[2][0])
             elif event.type == pygame.QUIT:
                 self.quit = True
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -376,8 +391,11 @@ class Operate:
                     with open(f'{self.script_dir}/targets.txt', 'w') as fo:
                         json.dump(self.fruit_dict, fo, indent=4)
                     final = {**self.map_dict, **self.fruit_dict}
+                    final_unaligned = {**self.map_dict_unaligned, **self.fruit_dict}
                     with open(f'{self.script_dir}/final_map.txt', 'w') as fo:
                         json.dump(final, fo, indent=4)
+                    with open(f'{self.script_dir}/final_map_unaligned.txt', 'w') as fo:
+                        json.dump(final_unaligned, fo, indent=4)
                  # convert map_dict to file
                 self.quit = True
             else:

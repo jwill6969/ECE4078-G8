@@ -9,6 +9,51 @@ from util.pibot import Alphabot
 import util.measure as measure
 from util.utilityFunctions import *
 
+import ast
+import numpy as np
+import json
+import matplotlib.pyplot as plt
+def printCompare(aligned,unaligned):
+    ax = plt.gca()
+    ax.scatter(aligned[0][:], aligned[1][:], marker='o', color='C0', s=100)
+    ax.scatter(unaligned[0][:], unaligned[1][:], marker='x', color='C1', s=100)
+    for i in range(1,11):
+        ax.text(aligned[0][i-1]+0.05, aligned[1][i-1]+0.05, i, color='C0', size=12)
+        ax.text(unaligned[0][i-1]+0.05, unaligned[1][i-1]+0.05, i, color='C1', size=12)
+    plt.title('Arena')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    ax.set_xticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
+    ax.set_yticks([-1.6, -1.2, -0.8, -0.4, 0, 0.4, 0.8, 1.2, 1.6])
+    plt.legend(['aligned','unaligned'])
+    plt.grid()
+    plt.show()
+
+def convert_shape(points):
+    final = [[],[]]
+    for i in range(len(points)):
+        x_cord = points[i][0][0]
+        y_cord = points[i][1][0]
+        final[0].append(x_cord)
+        final[1].append(y_cord)
+    return final
+
+def calculate_translation(true_pose, robot_pose):
+    translation = np.zeros(2)
+    translation[0] = true_pose[0][0] - robot_pose[0][0]
+    translation[1] = true_pose[1][0] - robot_pose[1][0]
+    return translation
+
+def translate_coordinates(points, translation):
+    # Iterate through the list of coordinates and apply the translation
+    translated = [[],[]]
+    for i in range(len(points[0])):
+        translated_x = points[0][i] + translation[0]
+        translated_y = points[1][i] + translation[1]
+        translated[0].append(translated_x)
+        translated[1].append(translated_y)
+    return translated
+
 def dist_between_points(point1,point2):
     return np.sqrt((point1[0]-point2[0])**2+(point1[1]-point2[1])**2)
 
